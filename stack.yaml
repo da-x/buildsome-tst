@@ -1,4 +1,4 @@
 packages:
 - '.'
-resolver: lts-3.0
+resolver: lts-5.4
 rebuild-ghc-options: true
