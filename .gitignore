@@ -1,1 +1,6 @@
-.stack-work/
+/.stack-work/
+/dist
+*.i_hi
+*.i_o
+/app/BMake/Lexer.hs
+/app/BMake/Parser.hs
