@@ -16,7 +16,7 @@ module BMake.Base
   , lexer
   , UnitF(..)
   , Unit
-  , StatementF(..)
+  , StatementF(..), substmts
   , Statement
   , Expr
   , ExprOne
@@ -77,6 +77,15 @@ data StatementF t
   | IfCmp Bool (ExprF t) (ExprF t) (DList (StatementF t)) (DList (StatementF t))
   deriving (Show, Generic, Functor)
 type Statement = StatementF ByteString
+
+-- | Traversal of direct children of statement
+substmts ::
+    Applicative f =>
+    (DList (StatementF t) -> f (DList (StatementF t))) ->
+    StatementF t -> f (StatementF t)
+substmts f (Local dl) = Local <$> f dl
+substmts f (IfCmp a b c dla dlb) = IfCmp a b c <$> f dla <*> f dlb
+substmts _ x = pure x
 
 instance (NFData t) => NFData (StatementF t) where
   rnf = genericRnf
