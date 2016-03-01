@@ -8,13 +8,13 @@ import           BMake.User (Error, parseUnit, parseWithAlex, stateBase)
 import           Control.DeepSeq (force)
 import           Control.Exception (evaluate)
 import           Control.Monad (forM_)
--- import qualified Data.ByteString as B
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.DList (DList)
 import qualified Data.DList as DList
--- import qualified Data.Text.Encoding as T
--- import qualified Data.Yaml.Pretty as YAML
+import qualified Data.Text.Encoding as T
+import qualified Data.Yaml.Pretty as YAML
 import           Lib.TimeIt (printTimeIt)
 import           System.Environment (getArgs)
 import           System.FilePath ((</>))
@@ -63,12 +63,12 @@ parse rootDir makefile = do
                     fail $ show x
                 Right ast -> do
                     ast' <- Unit <$> handleIncludes dirs (unit ast)
---                    let astf = T.decodeUtf8 . B.concat . BL.toChunks <$> ast'
---                    B.putStr $ YAML.encodePretty YAML.defConfig astf
                     return ast'
 
 main :: IO ()
 main = do
     [makefile] <- getArgs
-    _ <- parse (FilePath.takeDirectory makefile) makefile
+    ast <- printTimeIt "total" $ parse (FilePath.takeDirectory makefile) makefile
+    let astf = T.decodeUtf8 . B.concat . BL.toChunks <$> ast
+    B.putStr $ YAML.encodePretty YAML.defConfig astf
     return ()
