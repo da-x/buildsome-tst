@@ -15,12 +15,13 @@ module BMake.Lexer
   , AlexState(..)
   , Token(..)
   , TokenClass(..)
+  , AlexUserState(..)
   , alexMonadScan
   , tokenToPosN
   , tokenToLineN
   , runAlex
-  , getPrevToken
-  , setPrevToken
+  , getUserState
+  , modifyUserState
   , alexSetStartCode
   , alexStructError
   )
@@ -73,11 +74,11 @@ state:-
 
 {
 
-getPrevToken :: Alex (Maybe Token, Maybe Token)
-getPrevToken = Alex $ \s@AlexState{alex_ust=ust} -> Right (s, alex_ust s)
+getUserState :: Alex AlexUserState
+getUserState = Alex $ \s -> Right (s, alex_ust s)
 
-setPrevToken :: (Maybe Token, Maybe Token) -> Alex ()
-setPrevToken xx = Alex $ \s -> Right (s{alex_ust=xx}, ())
+modifyUserState :: (AlexUserState -> AlexUserState) -> Alex ()
+modifyUserState f = Alex $ \s -> Right (s{alex_ust=f (alex_ust s)}, ())
 
 -- Some action helpers:
 tok' r f (p, _, input, _) len = do
@@ -140,6 +141,8 @@ alexEOF = do
   (p, _, _, _) <- alexGetInput
   return $ Token p TokenEOF
 
-type AlexUserState = (Maybe Token, Maybe Token)
-alexInitUserState = (Nothing, Nothing)
+data AlexUserState = AlexUserState
+    { prevTokens :: (Maybe Token, Maybe Token)
+    }
+alexInitUserState = AlexUserState (Nothing, Nothing)
 }
