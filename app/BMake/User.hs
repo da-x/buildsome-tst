@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module BMake.User
        ( parseWithAlex
        , parseUnit
@@ -6,17 +7,21 @@ module BMake.User
        ) where
 
 --------------------------------------------------------------------------------
-import qualified Data.ByteString.Lazy    as BL
+import           Control.DeepSeq (NFData)
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.DList as DList
 import           Data.DList (DList)
+import           GHC.Generics (Generic)
 ----
 import           BMake.Parser (happyParser)
 import           BMake.Lexer
 import           BMake.Base
 --------------------------------------------------------------------------------
 
-data Error = Error Int Int String
-   deriving Show
+data Error = Error !Int !Int !String
+   deriving (Show, Generic)
+
+instance NFData Error
 
 stateBase :: Int
 stateBase = 0
