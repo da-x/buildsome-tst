@@ -58,7 +58,7 @@ executable buildsome-tst-exe
                      , text
                      , time
                      , unix
-                     , yaml
+                     , yaml >= 0.8.13
   default-language:    Haskell2010
   build-tools:         happy, alex
 
