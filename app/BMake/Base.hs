@@ -26,14 +26,14 @@ module BMake.Base
   where
 
 --------------------------------------------------------------------------------
-import           Control.DeepSeq      (NFData (..), deepseq, force)
+import           Control.DeepSeq      (NFData (..))
 import           Data.Aeson
 import           Data.ByteString.Lazy (ByteString)
 import           Data.DList           (DList)
 import qualified Data.DList           as DList
 import           Data.Text
 import           GHC.Generics
-import Control.DeepSeq.Generics (genericRnf)
+import           Control.DeepSeq.Generics (genericRnf)
 ----
 import           BMake.Lexer
 --------------------------------------------------------------------------------
