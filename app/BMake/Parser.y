@@ -52,10 +52,7 @@ import Data.ByteString.Lazy (ByteString)
 -- Regular types
 
 Root  :: {Unit}
-       : Statements  { Unit $1 }
-
-Statements :: {[Statement]}
-      : StatementsDList { {-Statements-}DList.toList $1 }
+       : StatementsDList  { Unit (DList.toList $1) }
 
 StatementsDList :: {DList Statement}
       : StatementsDList Statement       { case $2 of { Just x -> $1 `DList.snoc` x ; Nothing -> $1 } }
@@ -69,7 +66,7 @@ MW    :: {DList ByteString}
       |        { DList.empty }
 
 Statement :: {Maybe Statement}
-      : local MW "{" Statements local MW "}" { Just $ Local $4 }
+      : local MW "{" StatementsDList local MW "}" { Just $ Local (DList.toList $4) }
       | OTHER MW "=" MW TgtExprListE   { Just $ Assign $1 AssignNormal $5 }
       | OTHER MW "?=" MW TgtExprListE  { Just $ Assign $1 AssignConditional $5 }
       | ExprList MW ":" MW TgtExprListE MAYBE_TARGET_BODY
@@ -88,10 +85,10 @@ SCRIPTS :: {DList [Expr]}
       | TgtExprListE                  { DList.singleton $1 }
 
 IFSTMT -- TODO: Is this it? :: { [Expr] -> [Expr] -> [Statement] -> [Statement] -> Statement }
-      : MW "(" ExprListE "," ExprListE ")" NEWLINE Statements else Statements endif
-                                      { \x -> x $3 $5 $8 $10 }
-      | MW "(" ExprListE "," ExprListE ")" NEWLINE Statements endif
-                                      { \x -> x $3 $5 $8 [] }
+      : MW "(" ExprListE "," ExprListE ")" NEWLINE StatementsDList else StatementsDList endif
+                                      { \x -> x $3 $5 (DList.toList $8) (DList.toList $10) }
+      | MW "(" ExprListE "," ExprListE ")" NEWLINE StatementsDList endif
+                                      { \x -> x $3 $5 (DList.toList $8) [] }
 
 ExprListE :: {[Expr]}
       :                               { [] }
