@@ -67,8 +67,8 @@ MW    :: {DList ByteString}
 
 Statement :: {Maybe Statement}
       : local MW "{" Statements local MW "}" { Just $ Local $4 }
-      | OTHER MW "=" MW TgtExprListE   { Just $ Assign $1 False $5 }
-      | OTHER MW "?=" MW TgtExprListE  { Just $ Assign $1 True $5 }
+      | OTHER MW "=" MW TgtExprListE   { Just $ Assign $1 AssignNormal $5 }
+      | OTHER MW "?=" MW TgtExprListE  { Just $ Assign $1 AssignConditional $5 }
       | ExprList MW ":" MW TgtExprListE MAYBE_TARGET_BODY
                                       { Just $ Target $1 $5 $6 }
       | include MW OTHER              { Just $ Include $3 }

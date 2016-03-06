@@ -15,6 +15,7 @@ module BMake.Base
   , AlexState(..)
   , parseDCToken
   , lexer
+  , AssignType(..)
   , UnitF(..)
   , Unit
   , StatementF(..), substmts
@@ -99,7 +100,7 @@ parseDCToken (other, mods) =
                  Nothing -> NoMod
                  _ -> error $ "unexpected lexing input" ++ show mods)
 
-instance (NFData t) => NFData (ExprOneF t) where
+instance NFData t => NFData (ExprOneF t) where
   rnf = genericRnf
 
 type ExprOne = ExprOneF ByteString
@@ -107,8 +108,13 @@ type ExprOne = ExprOneF ByteString
 type ExprF t = DList (ExprOneF t)
 type Expr = ExprF ByteString
 
+data AssignType = AssignNormal | AssignConditional
+  deriving (Show, Generic)
+instance NFData AssignType where
+instance ToJSON AssignType where
+
 data StatementF t
-  = Assign t Bool (ExprF t)
+  = Assign t AssignType (ExprF t)
   | Local (DList (StatementF t))
   | Target (ExprF t) (ExprF t) (DList (ExprF t))
   | Include t
@@ -125,7 +131,7 @@ substmts f (Local dl) = Local <$> f dl
 substmts f (IfCmp a b c dla dlb) = IfCmp a b c <$> f dla <*> f dlb
 substmts _ x = pure x
 
-instance (NFData t) => NFData (StatementF t) where
+instance NFData t => NFData (StatementF t) where
   rnf = genericRnf
 
 data UnitF t
@@ -134,8 +140,7 @@ data UnitF t
     } deriving (Show, Generic, Functor)
 type Unit = UnitF ByteString
 
-instance (NFData t) => NFData (UnitF t) where
-  rnf = genericRnf
+instance NFData t => NFData (UnitF t) where
 
 instance ToJSON a => ToJSON (DList a) where
     toJSON = fmap toJSON DList.toList
