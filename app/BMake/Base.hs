@@ -79,7 +79,7 @@ instance NFData SpecialModifier where
 
 data ExprOneF text
   = Str text
-  | Multi (DList (ExprF text))
+  | Multi [ExprF text]
   | Spaces
   | VarSpecial SpecialFlag SpecialModifier
   | VarSimple text

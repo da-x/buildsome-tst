@@ -158,9 +158,12 @@ TgtExprOne :: {ExprOne}
       | "("                           { Str "(" }
       | ")"                           { Str ")" }
 
-ExprCommaList :: {DList Expr}
-      : ExprCommaList "," ExprListNWS { $1 `DList.snoc` $3 }
-      | ExprListNWS                   { DList.singleton $1 }
+ExprCommaList :: {[Expr]}
+      : ExprCommaListDList                 { DList.toList $1 }
+
+ExprCommaListDList :: {DList Expr}
+      : ExprCommaListDList "," ExprListNWS { $1 `DList.snoc` $3 }
+      | ExprListNWS                        { DList.singleton $1 }
 
 ExprListNWS :: {Expr}
       :                               { DList.empty        }
