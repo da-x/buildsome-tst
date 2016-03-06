@@ -79,33 +79,33 @@ Statement :: {Maybe Statement}
       | ifeq IFSTMT                   { Just $ ($2) $ IfCmp IfEquals }
       | ifneq IFSTMT                  { Just $ ($2) $ IfCmp IfNotEquals }
 
-MAYBE_TARGET_BODY :: {[[ExprOne]]}
+MAYBE_TARGET_BODY :: {[[Expr]]}
       :                               { [] }
       | TAB SCRIPTS                   { {-MAYBE_TARGET_BODY-}DList.toList $2 }
 
-SCRIPTS :: {DList [ExprOne]}
+SCRIPTS :: {DList [Expr]}
       : SCRIPTS TAB TgtExprListE      { $1 `DList.snoc` $3 }
       | TgtExprListE                  { DList.singleton $1 }
 
-IFSTMT -- TODO: Is this it? :: { [ExprOne] -> [ExprOne] -> [Statement] -> [Statement] -> Statement }
+IFSTMT -- TODO: Is this it? :: { [Expr] -> [Expr] -> [Statement] -> [Statement] -> Statement }
       : MW "(" ExprListE "," ExprListE ")" NEWLINE Statements else Statements endif
                                       { \x -> x $3 $5 $8 $10 }
       | MW "(" ExprListE "," ExprListE ")" NEWLINE Statements endif
                                       { \x -> x $3 $5 $8 [] }
 
-ExprListE :: {[ExprOne]}
+ExprListE :: {[Expr]}
       :                               { [] }
       | ExprList                      { $1 }
 
-ExprList :: {[ExprOne]}
+ExprList :: {[Expr]}
       : ExprDList                     { {-ExprList-}DList.toList $1 }
 
-ExprDList :: {DList ExprOne}
-      : ExprDList MW ExprOne          { ($1 `DList.snoc` Spaces) `DList.snoc` $3 }
-      | ExprDList ExprOne             { $1 `DList.snoc` $2 }
-      | ExprOne                       { DList.singleton $1 }
+ExprDList :: {DList Expr}
+      : ExprDList MW Expr          { ($1 `DList.snoc` Spaces) `DList.snoc` $3 }
+      | ExprDList Expr             { $1 `DList.snoc` $2 }
+      | Expr                       { DList.singleton $1 }
 
-ExprOne :: {ExprOne}
+Expr :: {Expr}
       : OTHER                         { Str $1 }
       | DC                            { parseDCToken $1 }
       | "$" "{" OTHER "}"             { VarSimple $3 }
@@ -115,7 +115,7 @@ ExprOne :: {ExprOne}
       | "*"                           { Str "*" }
       | "$"                           { Str "$" }
 
-ExprOneP :: {ExprOne}
+ExprP :: {Expr}
       : OTHER                         { Str $1 }
       | DC                            { parseDCToken $1 }
       | "$" "{" OTHER "}"             { VarSimple $3 }
@@ -132,15 +132,15 @@ ExprOneP :: {ExprOne}
       | ")"                           { Str ")" }
 
 -- TODO: Check if base case of 1 is simpler than 2 rules?
-TgtExprListE :: {[ExprOne]}
+TgtExprListE :: {[Expr]}
       :                               { [] }
       | TgtExprList                   { {-TgtExprListE-}DList.toList $1 }
 
-TgtExprList :: {DList ExprOne}
-      : TgtExprList TgtExprOne        { $1 `DList.snoc` $2 }
-      | TgtExprOne                    { DList.singleton $1 }
+TgtExprList :: {DList Expr}
+      : TgtExprList TgtExpr        { $1 `DList.snoc` $2 }
+      | TgtExpr                    { DList.singleton $1 }
 
-TgtExprOne :: {ExprOne}
+TgtExpr :: {Expr}
       : OTHER                         { Str $1 }
       | SPACES                        { Spaces }
       | DC                            { parseDCToken $1 }
@@ -162,16 +162,16 @@ TgtExprOne :: {ExprOne}
       | "("                           { Str "(" }
       | ")"                           { Str ")" }
 
-ExprCommaList :: {[[ExprOne]]}
+ExprCommaList :: {[[Expr]]}
       : ExprCommaListDList                 { {-ExprCommaList-} DList.toList $1 }
 
-ExprCommaListDList :: {DList [ExprOne]}
+ExprCommaListDList :: {DList [Expr]}
       : ExprCommaListDList "," ExprListNWS { $1 `DList.snoc` $3 }
       | ExprListNWS                        { DList.singleton $1 }
 
-ExprListNWS :: {[ExprOne]}
+ExprListNWS :: {[Expr]}
       : ExprListNWSDList              { DList.toList $1 }
 
-ExprListNWSDList :: {DList ExprOne}
+ExprListNWSDList :: {DList Expr}
       :                               { DList.empty        }
-      | ExprListNWSDList ExprOneP     { $1 `DList.snoc` $2 }
+      | ExprListNWSDList ExprP     { $1 `DList.snoc` $2 }

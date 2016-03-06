@@ -20,8 +20,8 @@ module BMake.Base
   , Unit
   , StatementF(..), substmts
   , Statement
-  , ExprOne
-  , ExprOneF(..)
+  , Expr
+  , ExprF(..)
   , module BMake.Lexer
   )
   where
@@ -74,15 +74,15 @@ instance ToJSON SpecialModifier where
 instance NFData SpecialModifier where
   rnf = genericRnf
 
-data ExprOneF text
+data ExprF text
   = Str text
-  | Multi [[ExprOneF text]]
+  | Multi [[ExprF text]]
   | Spaces
   | VarSpecial SpecialFlag SpecialModifier
   | VarSimple text
   deriving (Show, Generic, Functor)
 
-parseDCToken :: IsString text => (Char, Maybe Char) -> ExprOneF text
+parseDCToken :: IsString text => (Char, Maybe Char) -> ExprF text
 parseDCToken ('.', Nothing) = VarSimple "."
 parseDCToken (other, mods) =
     VarSpecial (case other of
@@ -97,10 +97,10 @@ parseDCToken (other, mods) =
                  Nothing -> NoMod
                  _ -> error $ "unexpected lexing input" ++ show mods)
 
-instance NFData text => NFData (ExprOneF text) where
+instance NFData text => NFData (ExprF text) where
   rnf = genericRnf
 
-type ExprOne = ExprOneF ByteString
+type Expr = ExprF ByteString
 
 data AssignType = AssignNormal | AssignConditional
   deriving (Show, Generic)
@@ -113,11 +113,11 @@ instance NFData IfCmpType where
 instance ToJSON IfCmpType where
 
 data StatementF text
-  = Assign text AssignType [ExprOneF text]
+  = Assign text AssignType [ExprF text]
   | Local [StatementF text]
-  | Target [ExprOneF text] [ExprOneF text] [[ExprOneF text]]
+  | Target [ExprF text] [ExprF text] [[ExprF text]]
   | Include text
-  | IfCmp IfCmpType [ExprOneF text] [ExprOneF text] [StatementF text] [StatementF text]
+  | IfCmp IfCmpType [ExprF text] [ExprF text] [StatementF text] [StatementF text]
   deriving (Show, Generic, Functor)
 type Statement = StatementF ByteString
 
@@ -141,7 +141,7 @@ type Unit = UnitF ByteString
 
 instance NFData text => NFData (UnitF text) where
 
-instance ToJSON (ExprOneF Text) where
+instance ToJSON (ExprF Text) where
     toJSON (Str name) = String name
     toJSON (Spaces) = String " "
     toJSON (VarSpecial vtype mods) =
