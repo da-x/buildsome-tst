@@ -20,7 +20,6 @@ module BMake.Base
   , Unit
   , StatementF(..), substmts
   , Statement
-  , Expr
   , ExprOne
   , ExprOneF(..)
   , module BMake.Lexer
@@ -32,8 +31,6 @@ import           Control.DeepSeq          (NFData (..))
 import           Control.DeepSeq.Generics (genericRnf)
 import           Data.Aeson
 import           Data.ByteString.Lazy     (ByteString)
-import           Data.DList               (DList)
-import qualified Data.DList               as DList
 import           Data.String              (IsString)
 import           Data.Text
 import           GHC.Generics
@@ -79,7 +76,7 @@ instance NFData SpecialModifier where
 
 data ExprOneF text
   = Str text
-  | Multi [ExprF text]
+  | Multi [[ExprOneF text]]
   | Spaces
   | VarSpecial SpecialFlag SpecialModifier
   | VarSimple text
@@ -105,9 +102,6 @@ instance NFData text => NFData (ExprOneF text) where
 
 type ExprOne = ExprOneF ByteString
 
-type ExprF text = DList (ExprOneF text)
-type Expr = ExprF ByteString
-
 data AssignType = AssignNormal | AssignConditional
   deriving (Show, Generic)
 instance NFData AssignType where
@@ -119,11 +113,11 @@ instance NFData IfCmpType where
 instance ToJSON IfCmpType where
 
 data StatementF text
-  = Assign text AssignType (ExprF text)
+  = Assign text AssignType [ExprOneF text]
   | Local [StatementF text]
-  | Target (ExprF text) (ExprF text) [ExprF text]
+  | Target [ExprOneF text] [ExprOneF text] [[ExprOneF text]]
   | Include text
-  | IfCmp IfCmpType (ExprF text) (ExprF text) [StatementF text] [StatementF text]
+  | IfCmp IfCmpType [ExprOneF text] [ExprOneF text] [StatementF text] [StatementF text]
   deriving (Show, Generic, Functor)
 type Statement = StatementF ByteString
 
@@ -146,9 +140,6 @@ data UnitF text
 type Unit = UnitF ByteString
 
 instance NFData text => NFData (UnitF text) where
-
-instance ToJSON a => ToJSON (DList a) where
-    toJSON = fmap toJSON DList.toList
 
 instance ToJSON (ExprOneF Text) where
     toJSON (Str name) = String name

@@ -55,7 +55,7 @@ Root  :: {Unit}
        : Statements  { Unit $1 }
 
 Statements :: {[Statement]}
-      : StatementsDList { DList.toList $1 }
+      : StatementsDList { {-Statements-}DList.toList $1 }
 
 StatementsDList :: {DList Statement}
       : StatementsDList Statement       { case $2 of { Just x -> $1 `DList.snoc` x ; Nothing -> $1 } }
@@ -73,33 +73,36 @@ Statement :: {Maybe Statement}
       | OTHER MW "=" MW TgtExprListE   { Just $ Assign $1 AssignNormal $5 }
       | OTHER MW "?=" MW TgtExprListE  { Just $ Assign $1 AssignConditional $5 }
       | ExprList MW ":" MW TgtExprListE MAYBE_TARGET_BODY
-                                      { Just $ Target $1 $5 (DList.toList $6) }
+                                      { Just $ Target $1 $5 $6 }
       | include MW OTHER              { Just $ Include $3 }
       | SPACES                        { Nothing }
-      | ifeq IFEQ                     { Just $ ($2) $ IfCmp IfEquals }
-      | ifneq IFEQ                    { Just $ ($2) $ IfCmp IfNotEquals }
+      | ifeq IFSTMT                   { Just $ ($2) $ IfCmp IfEquals }
+      | ifneq IFSTMT                  { Just $ ($2) $ IfCmp IfNotEquals }
 
-MAYBE_TARGET_BODY :: {DList Expr}
-      :                               { DList.empty }
-      | TAB SCRIPTS                   { $2 }
+MAYBE_TARGET_BODY :: {[[ExprOne]]}
+      :                               { [] }
+      | TAB SCRIPTS                   { {-MAYBE_TARGET_BODY-}DList.toList $2 }
 
-SCRIPTS :: {DList Expr}
+SCRIPTS :: {DList [ExprOne]}
       : SCRIPTS TAB TgtExprListE      { $1 `DList.snoc` $3 }
       | TgtExprListE                  { DList.singleton $1 }
 
-IFEQ
+IFSTMT -- TODO: Is this it? :: { [ExprOne] -> [ExprOne] -> [Statement] -> [Statement] -> Statement }
       : MW "(" ExprListE "," ExprListE ")" NEWLINE Statements else Statements endif
                                       { \x -> x $3 $5 $8 $10 }
       | MW "(" ExprListE "," ExprListE ")" NEWLINE Statements endif
                                       { \x -> x $3 $5 $8 [] }
 
-ExprListE :: {Expr}
-      :                               { DList.empty }
+ExprListE :: {[ExprOne]}
+      :                               { [] }
       | ExprList                      { $1 }
 
-ExprList :: {Expr}
-      : ExprList MW ExprOne           { ($1 `DList.snoc` Spaces) `DList.snoc` $3 }
-      | ExprList ExprOne              { $1 `DList.snoc` $2 }
+ExprList :: {[ExprOne]}
+      : ExprDList                     { {-ExprList-}DList.toList $1 }
+
+ExprDList :: {DList ExprOne}
+      : ExprDList MW ExprOne          { ($1 `DList.snoc` Spaces) `DList.snoc` $3 }
+      | ExprDList ExprOne             { $1 `DList.snoc` $2 }
       | ExprOne                       { DList.singleton $1 }
 
 ExprOne :: {ExprOne}
@@ -128,11 +131,12 @@ ExprOneP :: {ExprOne}
       | "("                           { Str "(" }
       | ")"                           { Str ")" }
 
-TgtExprListE :: {Expr}
-      :                               { DList.empty }
-      | TgtExprList                   { $1 }
+-- TODO: Check if base case of 1 is simpler than 2 rules?
+TgtExprListE :: {[ExprOne]}
+      :                               { [] }
+      | TgtExprList                   { {-TgtExprListE-}DList.toList $1 }
 
-TgtExprList :: {Expr}
+TgtExprList :: {DList ExprOne}
       : TgtExprList TgtExprOne        { $1 `DList.snoc` $2 }
       | TgtExprOne                    { DList.singleton $1 }
 
@@ -158,15 +162,16 @@ TgtExprOne :: {ExprOne}
       | "("                           { Str "(" }
       | ")"                           { Str ")" }
 
-ExprCommaList :: {[Expr]}
-      : ExprCommaListDList                 { DList.toList $1 }
+ExprCommaList :: {[[ExprOne]]}
+      : ExprCommaListDList                 { {-ExprCommaList-} DList.toList $1 }
 
-ExprCommaListDList :: {DList Expr}
+ExprCommaListDList :: {DList [ExprOne]}
       : ExprCommaListDList "," ExprListNWS { $1 `DList.snoc` $3 }
       | ExprListNWS                        { DList.singleton $1 }
 
-ExprListNWS :: {Expr}
-      :                               { DList.empty        }
-      | ExprListNWS ExprOneP          { $1 `DList.snoc` $2 }
+ExprListNWS :: {[ExprOne]}
+      : ExprListNWSDList              { DList.toList $1 }
 
-{}
+ExprListNWSDList :: {DList ExprOne}
+      :                               { DList.empty        }
+      | ExprListNWSDList ExprOneP     { $1 `DList.snoc` $2 }
