@@ -16,8 +16,8 @@ module BMake.Base
   , parseDCToken
   , lexer
   , AssignType(..), IfCmpType(..)
-  , UnitF(..)
-  , Unit
+  , MakefileF(..)
+  , Makefile
   , StatementF(..), substmts
   , Statement
   , Expr
@@ -131,15 +131,14 @@ substmts f (IfCmp a b c dla dlb) = IfCmp a b c <$> f dla <*> f dlb
 substmts _ x = pure x
 
 instance NFData text => NFData (StatementF text) where
-  rnf = genericRnf
+    rnf = genericRnf
 
-data UnitF text
-  = Unit {
-      unit :: [StatementF text]
+data MakefileF text = Makefile
+    { unit :: [StatementF text]
     } deriving (Show, Generic, Functor)
-type Unit = UnitF ByteString
+type Makefile = MakefileF ByteString
 
-instance NFData text => NFData (UnitF text) where
+instance NFData text => NFData (MakefileF text) where
 
 instance ToJSON (ExprF Text) where
     toJSON (Str name) = String name
@@ -182,7 +181,7 @@ instance ToJSON (StatementF Text) where
           , "if_otherwise" .= if_otherwise
           ] ]
 
-instance ToJSON (UnitF Text) where
+instance ToJSON (MakefileF Text) where
 
 getPrevTokens :: Alex (Maybe Token, Maybe Token)
 getPrevTokens = prevTokens <$> getUserState

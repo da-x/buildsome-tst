@@ -3,8 +3,8 @@
 
 module Main (main) where
 
-import           BMake.Base (Unit, UnitF(..), Statement, StatementF(..), substmts)
-import           BMake.User (Error, parseUnit)
+import           BMake.Base (Makefile, MakefileF(..), Statement, StatementF(..), substmts)
+import           BMake.User (Error, parseMakefile)
 import           Control.DeepSeq (force)
 import           Control.Exception (evaluate)
 import qualified Data.ByteString as B
@@ -22,7 +22,7 @@ import qualified System.FilePath as FilePath
 
 type Cache k v = IORef (Map k v)
 
-type ParseCache = Cache FilePath Unit
+type ParseCache = Cache FilePath Makefile
 
 data Dirs = Dirs
     { dirsRoot :: FilePath
@@ -49,8 +49,8 @@ handleInclude cache dirs other =
 handleIncludes :: ParseCache -> Dirs -> [Statement] -> IO [Statement]
 handleIncludes cache dirs = fmap concat . mapM (handleInclude cache dirs)
 
-parseSingle :: BL8.ByteString -> IO (Either Error Unit)
-parseSingle = printTimeIt "parse" . evaluate . force . parseUnit
+parseSingle :: BL8.ByteString -> IO (Either Error Makefile)
+parseSingle = printTimeIt "parse" . evaluate . force . parseMakefile
 
 memoIO :: Ord k => Cache k v -> (k -> IO v) -> k -> IO v
 memoIO cache action k =
@@ -64,7 +64,7 @@ memoIO cache action k =
                     modifyIORef cache $ Map.insert k v
                     return v
 
-parse :: ParseCache -> FilePath -> FilePath -> IO Unit
+parse :: ParseCache -> FilePath -> FilePath -> IO Makefile
 parse cache rootDir =
     memoIO cache $ \makefile -> do
         content <- BL.readFile makefile
@@ -74,7 +74,7 @@ parse cache rootDir =
         case res of
             Left x -> fail $ show x
             Right ast -> do
-                ast' <- Unit <$> handleIncludes cache dirs (unit ast)
+                ast' <- Makefile <$> handleIncludes cache dirs (unit ast)
                 return ast'
 
 main :: IO ()

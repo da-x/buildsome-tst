@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module BMake.User
        ( parseWithAlex
-       , parseUnit
+       , parseMakefile
        , stateBase
        , Error(..)
        ) where
@@ -36,8 +36,8 @@ parseWithAlex startState bs = root
                       _ -> loop $ s' `DList.snoc` token
 
 
-parseUnit :: BL.ByteString -> Either Error Unit
-parseUnit s =
+parseMakefile :: BL.ByteString -> Either Error Makefile
+parseMakefile s =
   case runAlex s $ happyParser of
     Right x -> Right x
     Left ('l':'e':'x':xs) ->

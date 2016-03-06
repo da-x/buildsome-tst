@@ -51,8 +51,8 @@ import Data.ByteString.Lazy (ByteString)
 
 -- Regular types
 
-Root  :: {Unit}
-       : StatementsDList  { Unit (DList.toList $1) }
+Root  :: {Makefile}
+       : StatementsDList  { Makefile (DList.toList $1) }
 
 StatementsDList :: {DList Statement}
       : StatementsDList Statement       { case $2 of { Just x -> $1 `DList.snoc` x ; Nothing -> $1 } }
