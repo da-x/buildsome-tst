@@ -4,17 +4,18 @@
 module Main (main) where
 
 import           BMake.Base (Makefile, MakefileF(..), Statement, StatementF(..), substmts)
+import           BMake.Interpreter (interpret)
 import           BMake.User (Error, parseMakefile)
 import           Control.DeepSeq (force)
 import           Control.Exception (evaluate)
-import qualified Data.ByteString as B
+-- import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.IORef
 import           Data.Map (Map)
 import qualified Data.Map as Map
-import qualified Data.Text.Encoding as T
-import qualified Data.Yaml.Pretty as YAML
+-- import qualified Data.Text.Encoding as T
+-- import qualified Data.Yaml.Pretty as YAML
 import           Lib.TimeIt (printTimeIt)
 import           System.Environment (getArgs)
 import           System.FilePath ((</>))
@@ -50,7 +51,8 @@ handleIncludes :: ParseCache -> Dirs -> [Statement] -> IO [Statement]
 handleIncludes cache dirs = fmap concat . mapM (handleInclude cache dirs)
 
 parseSingle :: BL8.ByteString -> IO (Either Error Makefile)
-parseSingle = printTimeIt "parse" . evaluate . force . parseMakefile
+parseSingle = -- printTimeIt "parse" .
+              evaluate . force . parseMakefile
 
 memoIO :: Ord k => Cache k v -> (k -> IO v) -> k -> IO v
 memoIO cache action k =
@@ -68,7 +70,7 @@ parse :: ParseCache -> FilePath -> FilePath -> IO Makefile
 parse cache rootDir =
     memoIO cache $ \makefile -> do
         content <- BL.readFile makefile
-        putStrLn makefile
+        -- putStrLn makefile
         let dirs = Dirs rootDir (FilePath.takeDirectory makefile)
         res <- parseSingle content
         case res of
@@ -84,6 +86,7 @@ main = do
     ast <-
         printTimeIt "total" $
         parse cache (FilePath.takeDirectory makefile) makefile
-    let astf = T.decodeUtf8 . B.concat . BL.toChunks <$> ast
-    B.putStr $ YAML.encodePretty YAML.defConfig astf
+--    let astf = T.decodeUtf8 . B.concat . BL.toChunks <$> ast
+--    B.putStr $ YAML.encodePretty YAML.defConfig astf
+    printTimeIt "total" $ interpret ast
     return ()

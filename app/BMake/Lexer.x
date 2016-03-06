@@ -63,9 +63,9 @@ state:-
   <0>      \,                      { tok         TokenComma            }
   <0>      \%                      { tok         TokenPercent          }
   <0>      \*                      { tok         TokenAsterik          }
-  <0>      \$ [\. \@ \^ \< \|]
+  <0>      \$ [\. \@ \^ \< \| \*]
                                    { tokDC       1 Nothing             }
-  <0>      \$ \( [\@ \^ \< \|] (D|F) \)
+  <0>      \$ \( [\@ \^ \< \| \*] (D|F) \)
                                    { tokDC       2 (Just 3)            }
   <0>      \$                      { tok         TokenDollar           }
   <0>      [ \n ]+ [ \t ]          { tok         TokenNewLineAndTab    }

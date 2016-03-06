@@ -15,7 +15,10 @@ module BMake.Base
   , AlexState(..)
   , parseDCToken
   , lexer
-  , AssignType(..), IfCmpType(..)
+  , AssignType(..)
+  , IfCmpType(..)
+  , MetaVar(..)
+  , MetaVarModifier(..)
   , MakefileF(..)
   , Makefile
   , StatementF(..), substmts
@@ -54,53 +57,58 @@ happyError = do
   (AlexPn _ line col) <- alexGetPosition
   alexStructError (line, col, "syntax error" :: String)
 
-data SpecialFlag
+data MetaVar
   = FirstOutput
   | FirstInput
   | AllInputs
   | AllOOInputs
-  deriving (Show, Generic)
-instance ToJSON SpecialFlag where
-instance NFData SpecialFlag where
+  | Stem
+  deriving (Eq, Ord, Show, Generic)
+instance ToJSON MetaVar where
+instance NFData MetaVar where
   rnf = genericRnf
 
-data SpecialModifier
+data MetaVarModifier
   = NoMod
   | ModFile
   | ModDir
-  deriving (Show, Generic)
-instance ToJSON SpecialModifier where
-
-instance NFData SpecialModifier where
+  deriving (Eq, Ord, Show, Generic)
+instance ToJSON MetaVarModifier where
+instance NFData MetaVarModifier where
   rnf = genericRnf
 
 data ExprF text
   = Str text
-  | Multi [[ExprF text]]
+  | OpenBrace
+  | CloseBrace
+  | Comma
   | Spaces
-  | VarSpecial SpecialFlag SpecialModifier
+  | VarSpecial MetaVar MetaVarModifier
   | VarSimple text
-  deriving (Show, Generic, Functor)
+  deriving (Eq, Ord, Show, Generic, Functor)
+
+type Expr = ExprF ByteString
+
+parseMetaVarChar :: Char -> MetaVar
+parseMetaVarChar '@' = FirstOutput
+parseMetaVarChar '<' = FirstInput
+parseMetaVarChar '^' = AllInputs
+parseMetaVarChar '|' = AllOOInputs
+parseMetaVarChar '*' = Stem
+parseMetaVarChar other = error $ "unknown meta-variable: $" ++ [other]
+
+parseModifier :: Maybe Char -> MetaVarModifier
+parseModifier Nothing = NoMod
+parseModifier (Just 'F') = ModFile
+parseModifier (Just 'D') = ModDir
+parseModifier (Just other) = error $ "unknown meta-variable modifier: $(," ++ [other] ++ ")"
 
 parseDCToken :: IsString text => (Char, Maybe Char) -> ExprF text
 parseDCToken ('.', Nothing) = VarSimple "."
-parseDCToken (other, mods) =
-    VarSpecial (case other of
-                '@' -> FirstOutput
-                '<' -> FirstInput
-                '^' -> AllInputs
-                '|' -> AllOOInputs
-                _ -> error $ "unexpected lexing input" ++ show other)
-               (case mods of
-                 Just 'F' -> ModFile
-                 Just 'D' -> ModDir
-                 Nothing -> NoMod
-                 _ -> error $ "unexpected lexing input" ++ show mods)
+parseDCToken (other, modifier) = VarSpecial (parseMetaVarChar other) (parseModifier modifier)
 
 instance NFData text => NFData (ExprF text) where
   rnf = genericRnf
-
-type Expr = ExprF ByteString
 
 data AssignType = AssignNormal | AssignConditional
   deriving (Show, Generic)
@@ -142,14 +150,15 @@ instance NFData text => NFData (MakefileF text) where
 
 instance ToJSON (ExprF Text) where
     toJSON (Str name) = String name
+    toJSON Comma = String ","
+    toJSON OpenBrace = String "{"
+    toJSON CloseBrace = String "}"
     toJSON (Spaces) = String " "
     toJSON (VarSpecial vtype mods) =
         object [ "varSpecial" .= vtype
                , "varMod" .= mods ]
     toJSON (VarSimple name) =
         object [ "var" .= String name ]
-    toJSON (Multi lst) =
-        object [ "multi" .= lst ]
 
 instance ToJSON (StatementF Text) where
     toJSON (Assign name isOptional expr) =

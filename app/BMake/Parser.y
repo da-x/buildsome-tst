@@ -106,7 +106,8 @@ Expr :: {Expr}
       : OTHER                         { Str $1 }
       | DC                            { parseDCToken $1 }
       | "$" "{" OTHER "}"             { VarSimple $3 }
-      | "{" ExprCommaList "}"         { Multi $2 }
+      | "{"                           { OpenBrace }
+      | "}"                           { CloseBrace }
       | SPACES                        { Spaces }
       | "%"                           { Str "%" }
       | "*"                           { Str "*" }
@@ -116,9 +117,10 @@ ExprP :: {Expr}
       : OTHER                         { Str $1 }
       | DC                            { parseDCToken $1 }
       | "$" "{" OTHER "}"             { VarSimple $3 }
-      | "{" ExprCommaList "}"         { Multi $2 }
+      | "{"                           { OpenBrace }
+      | "}"                           { CloseBrace }
       | SPACES                        { Spaces }
-      | ","                           { Str "," }
+      | ","                           { Comma }
       | "="                           { Str "=" }
       | "?="                          { Str "?=" }
       | ":"                           { Str ":" }
@@ -143,7 +145,8 @@ TgtExpr :: {Expr}
       | DC                            { parseDCToken $1 }
       | "$" "{" OTHER "}"             { VarSimple $3 }
       | "$"                           { Str "$" }
-      | "{" ExprCommaList "}"         { Multi $2 }
+      | "{"                           { OpenBrace }
+      | "}"                           { CloseBrace }
       | else                          { Str "else" }
       | ifeq                          { Str "ifeq" }
       | ifneq                         { Str "ifneq" }
@@ -151,24 +154,10 @@ TgtExpr :: {Expr}
       | local                         { Str "local" }
       | endif                         { Str "endif" }
       | "="                           { Str "=" }
-      | ","                           { Str "," }
+      | ","                           { Comma }
       | "?="                          { Str "?="}
       | ":"                           { Str ":" }
       | "%"                           { Str "%" }
       | "*"                           { Str "*" }
       | "("                           { Str "(" }
       | ")"                           { Str ")" }
-
-ExprCommaList :: {[[Expr]]}
-      : ExprCommaListDList                 { {-ExprCommaList-} DList.toList $1 }
-
-ExprCommaListDList :: {DList [Expr]}
-      : ExprCommaListDList "," ExprListNWS { $1 `DList.snoc` $3 }
-      | ExprListNWS                        { DList.singleton $1 }
-
-ExprListNWS :: {[Expr]}
-      : ExprListNWSDList              { DList.toList $1 }
-
-ExprListNWSDList :: {DList Expr}
-      :                               { DList.empty        }
-      | ExprListNWSDList ExprP     { $1 `DList.snoc` $2 }
