@@ -121,7 +121,7 @@ instance ToJSON IfCmpType where
 data StatementF text
   = Assign text AssignType (ExprF text)
   | Local [StatementF text]
-  | Target (ExprF text) (ExprF text) (DList (ExprF text))
+  | Target (ExprF text) (ExprF text) [ExprF text]
   | Include text
   | IfCmp IfCmpType (ExprF text) (ExprF text) [StatementF text] [StatementF text]
   deriving (Show, Generic, Functor)

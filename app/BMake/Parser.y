@@ -73,7 +73,7 @@ Statement :: {Maybe Statement}
       | OTHER MW "=" MW TgtExprListE   { Just $ Assign $1 AssignNormal $5 }
       | OTHER MW "?=" MW TgtExprListE  { Just $ Assign $1 AssignConditional $5 }
       | ExprList MW ":" MW TgtExprListE MAYBE_TARGET_BODY
-                                      { Just $ Target $1 $5 $6 }
+                                      { Just $ Target $1 $5 (DList.toList $6) }
       | include MW OTHER              { Just $ Include $3 }
       | SPACES                        { Nothing }
       | ifeq IFEQ                     { Just $ ($2) $ IfCmp IfEquals }
