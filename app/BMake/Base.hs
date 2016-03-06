@@ -120,17 +120,17 @@ instance ToJSON IfCmpType where
 
 data StatementF text
   = Assign text AssignType (ExprF text)
-  | Local (DList (StatementF text))
+  | Local [StatementF text]
   | Target (ExprF text) (ExprF text) (DList (ExprF text))
   | Include text
-  | IfCmp IfCmpType (ExprF text) (ExprF text) (DList (StatementF text)) (DList (StatementF text))
+  | IfCmp IfCmpType (ExprF text) (ExprF text) [StatementF text] [StatementF text]
   deriving (Show, Generic, Functor)
 type Statement = StatementF ByteString
 
 -- | Traversal of direct children of statement
 substmts ::
     Applicative f =>
-    (DList (StatementF text) -> f (DList (StatementF text))) ->
+    ([StatementF text] -> f [StatementF text]) ->
     StatementF text -> f (StatementF text)
 substmts f (Local dl) = Local <$> f dl
 substmts f (IfCmp a b c dla dlb) = IfCmp a b c <$> f dla <*> f dlb
@@ -141,7 +141,7 @@ instance NFData text => NFData (StatementF text) where
 
 data UnitF text
   = Unit {
-      unit :: DList (StatementF text)
+      unit :: [StatementF text]
     } deriving (Show, Generic, Functor)
 type Unit = UnitF ByteString
 

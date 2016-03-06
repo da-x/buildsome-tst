@@ -10,8 +10,6 @@ import           Control.Exception (evaluate)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BL8
-import           Data.DList (DList)
-import qualified Data.DList as DList
 import           Data.IORef
 import           Data.Map (Map)
 import qualified Data.Map as Map
@@ -31,14 +29,14 @@ data Dirs = Dirs
     , dirsCurMakefile :: FilePath
     }
 
-handleIncludePath :: ParseCache -> Dirs -> FilePath -> IO (DList Statement)
+handleIncludePath :: ParseCache -> Dirs -> FilePath -> IO [Statement]
 handleIncludePath cache dirs = fmap unit . parse cache (dirsRoot dirs)
 
-handleIncludeStr :: ParseCache -> Dirs -> FilePath -> IO (DList Statement)
+handleIncludeStr :: ParseCache -> Dirs -> FilePath -> IO [Statement]
 handleIncludeStr cache dirs ('/':path) = handleIncludePath cache dirs $ dirsRoot dirs </> path
 handleIncludeStr cache dirs path = handleIncludePath cache dirs $ dirsCurMakefile dirs </> path
 
-handleInclude :: ParseCache -> Dirs -> Statement -> IO (DList Statement)
+handleInclude :: ParseCache -> Dirs -> Statement -> IO [Statement]
 handleInclude cache dirs (Include path) =
     case reads pathStr of
     [(quotedPath, "")] -> handleIncludeStr cache dirs quotedPath
@@ -46,10 +44,10 @@ handleInclude cache dirs (Include path) =
     where
         pathStr = BL8.unpack path
 handleInclude cache dirs other =
-    DList.singleton <$> substmts (handleIncludes cache dirs) other
+    (: []) <$> substmts (handleIncludes cache dirs) other
 
-handleIncludes :: ParseCache -> Dirs -> DList Statement -> IO (DList Statement)
-handleIncludes cache dirs = fmap mconcat . mapM (handleInclude cache dirs) . DList.toList
+handleIncludes :: ParseCache -> Dirs -> [Statement] -> IO [Statement]
+handleIncludes cache dirs = fmap concat . mapM (handleInclude cache dirs)
 
 parseSingle :: BL8.ByteString -> IO (Either Error Unit)
 parseSingle = printTimeIt "parse" . evaluate . force . parseUnit

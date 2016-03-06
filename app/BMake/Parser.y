@@ -54,10 +54,13 @@ import Data.ByteString.Lazy (ByteString)
 Root  :: {Unit}
        : Statements  { Unit $1 }
 
-Statements :: {DList Statement}
-      : Statements Statement            { case $2 of { Just x -> $1 `DList.snoc` x ; Nothing -> $1 } }
-      | Statements NEWLINE              { $1 }
-      | Statement                       { case $1 of { Just x -> DList.singleton x ; Nothing -> DList.empty } }
+Statements :: {[Statement]}
+      : StatementsDList { DList.toList $1 }
+
+StatementsDList :: {DList Statement}
+      : StatementsDList Statement       { case $2 of { Just x -> $1 `DList.snoc` x ; Nothing -> $1 } }
+      | StatementsDList NEWLINE         { $1 }
+      | Statement                       { maybe DList.empty DList.singleton $1 }
       |                                 { DList.empty }
 
 -- Maybe whitespace
@@ -88,7 +91,7 @@ IFEQ
       : MW "(" ExprListE "," ExprListE ")" NEWLINE Statements else Statements endif
                                       { \x -> x $3 $5 $8 $10 }
       | MW "(" ExprListE "," ExprListE ")" NEWLINE Statements endif
-                                      { \x -> x $3 $5 $8 DList.empty }
+                                      { \x -> x $3 $5 $8 [] }
 
 ExprListE :: {Expr}
       :                               { DList.empty }
