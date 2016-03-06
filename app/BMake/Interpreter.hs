@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# language LambdaCase #-}
 module BMake.Interpreter
@@ -5,11 +6,13 @@ module BMake.Interpreter
     ) where
 
 import           BMake.Base
+import           Control.DeepSeq (NFData(..), force)
+import           Control.Exception (evaluate)
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Control.Monad.Trans.Reader (ReaderT(..))
 import qualified Control.Monad.Trans.Reader as Reader
 import           Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as BS8
+-- import qualified Data.ByteString.Lazy.Char8 as BS8
 import           Data.Function ((&))
 import           Data.IORef
 import           Data.List (intercalate)
@@ -17,7 +20,7 @@ import           Data.List.Split (splitOn)
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
--- import           Debug.Trace
+import           GHC.Generics (Generic)
 
 type Vars = Map ByteString [Expr]
 
@@ -46,7 +49,8 @@ data Expr1
   | Expr1'Comma
   | Expr1'Spaces
   | Expr1'VarSpecial MetaVar MetaVarModifier
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+instance NFData Expr1
 
 -- | Expr1 after Group parsing
 data Expr2
@@ -54,14 +58,16 @@ data Expr2
   | Expr2'Group [[Expr2]]
   | Expr2'Spaces
   | Expr2'VarSpecial MetaVar MetaVarModifier
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+instance NFData Expr2
 
 -- | Expr2 after Group expansions
 data Expr3
   = Expr3'Str ByteString
   | Expr3'Spaces
   | Expr3'VarSpecial MetaVar MetaVarModifier
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+instance NFData Expr3
 
 {- TODO:
 data ExprTopLevel
@@ -162,27 +168,27 @@ local stmts =
         writeIORef varsRef varsSnapshot & liftIO
         return res
 
-showExprL :: [Expr3] -> String
-showExprL = concatMap showExpr
+-- showExprL :: [Expr3] -> String
+-- showExprL = concatMap showExpr
 
-showExpr :: Expr3 -> String
-showExpr (Expr3'Str text) = BS8.unpack text
-showExpr Expr3'Spaces = " "
-showExpr (Expr3'VarSpecial specialFlag specialModifier) =
-    "$" ++ wrap flagChar
-    where
-        flagChar =
-            case specialFlag of
-            FirstOutput -> "@"
-            FirstInput -> "<"
-            AllInputs -> "^"
-            AllOOInputs -> "|"
-            Stem -> "*"
-        wrap =
-            case specialModifier of
-            NoMod -> id
-            ModFile -> ('(':) . (++"F)")
-            ModDir -> ('(':) . (++"D)")
+-- showExpr :: Expr3 -> String
+-- showExpr (Expr3'Str text) = BS8.unpack text
+-- showExpr Expr3'Spaces = " "
+-- showExpr (Expr3'VarSpecial specialFlag specialModifier) =
+--     "$" ++ wrap flagChar
+--     where
+--         flagChar =
+--             case specialFlag of
+--             FirstOutput -> "@"
+--             FirstInput -> "<"
+--             AllInputs -> "^"
+--             AllOOInputs -> "|"
+--             Stem -> "*"
+--         wrap =
+--             case specialModifier of
+--             NoMod -> id
+--             ModFile -> ('(':) . (++"F)")
+--             ModDir -> ('(':) . (++"D)")
 
 statements :: [Statement] -> M ()
 statements = mapM_ statement
@@ -192,12 +198,16 @@ target outputs inputs {-orderOnly-} script =
     do
         vars <- Reader.asks envVars >>= liftIO . readIORef
         let norm = normalize vars
-        let put = liftIO . putStrLn
-        put "target:"
-        put $ "  outs: " ++ showExprL (norm outputs)
-        put $ "  ins:  " ++ showExprL (norm inputs)
-        put $ "  script:"
-        mapM_ (put . ("    "++) . showExprL . norm) script
+--        let put = liftIO . putStrLn
+        _ <- liftIO $ evaluate $ force $ norm outputs
+        _ <- liftIO $ evaluate $ force $ norm inputs
+        _ <- liftIO $ evaluate $ force $ map norm script
+        return ()
+        -- put "target:"
+        -- put $ "  outs: " ++ showExprL (norm outputs)
+        -- put $ "  ins:  " ++ showExprL (norm inputs)
+        -- put $ "  script:"
+        -- mapM_ (put . ("    "++) . showExprL . norm) script
 
 -- Expanded exprs given!
 -- TODO: Consider type-level marking of "expanded" exprs
