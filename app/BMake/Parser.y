@@ -157,7 +157,6 @@ TgtExprOne :: {ExprOne}
       | "*"                           { Str "*" }
       | "("                           { Str "(" }
       | ")"                           { Str ")" }
-      | "$"                           { Str "$" }
 
 ExprCommaList :: {DList Expr}
       : ExprCommaList "," ExprListNWS { $1 `DList.snoc` $3 }
