@@ -77,15 +77,15 @@ instance ToJSON SpecialModifier where
 instance NFData SpecialModifier where
   rnf = genericRnf
 
-data ExprOneF t
-  = Str t
-  | Multi (DList (ExprF t))
+data ExprOneF text
+  = Str text
+  | Multi (DList (ExprF text))
   | Spaces
   | VarSpecial SpecialFlag SpecialModifier
-  | VarSimple t
+  | VarSimple text
   deriving (Show, Generic, Functor)
 
-parseDCToken :: IsString t => (Char, Maybe Char) -> ExprOneF t
+parseDCToken :: IsString text => (Char, Maybe Char) -> ExprOneF text
 parseDCToken ('.', Nothing) = VarSimple "."
 parseDCToken (other, mods) =
     VarSpecial (case other of
@@ -100,12 +100,12 @@ parseDCToken (other, mods) =
                  Nothing -> NoMod
                  _ -> error $ "unexpected lexing input" ++ show mods)
 
-instance NFData t => NFData (ExprOneF t) where
+instance NFData text => NFData (ExprOneF text) where
   rnf = genericRnf
 
 type ExprOne = ExprOneF ByteString
 
-type ExprF t = DList (ExprOneF t)
+type ExprF text = DList (ExprOneF text)
 type Expr = ExprF ByteString
 
 data AssignType = AssignNormal | AssignConditional
@@ -118,34 +118,34 @@ data IfCmpType = IfEquals | IfNotEquals
 instance NFData IfCmpType where
 instance ToJSON IfCmpType where
 
-data StatementF t
-  = Assign t AssignType (ExprF t)
-  | Local (DList (StatementF t))
-  | Target (ExprF t) (ExprF t) (DList (ExprF t))
-  | Include t
-  | IfCmp IfCmpType (ExprF t) (ExprF t) (DList (StatementF t)) (DList (StatementF t))
+data StatementF text
+  = Assign text AssignType (ExprF text)
+  | Local (DList (StatementF text))
+  | Target (ExprF text) (ExprF text) (DList (ExprF text))
+  | Include text
+  | IfCmp IfCmpType (ExprF text) (ExprF text) (DList (StatementF text)) (DList (StatementF text))
   deriving (Show, Generic, Functor)
 type Statement = StatementF ByteString
 
 -- | Traversal of direct children of statement
 substmts ::
     Applicative f =>
-    (DList (StatementF t) -> f (DList (StatementF t))) ->
-    StatementF t -> f (StatementF t)
+    (DList (StatementF text) -> f (DList (StatementF text))) ->
+    StatementF text -> f (StatementF text)
 substmts f (Local dl) = Local <$> f dl
 substmts f (IfCmp a b c dla dlb) = IfCmp a b c <$> f dla <*> f dlb
 substmts _ x = pure x
 
-instance NFData t => NFData (StatementF t) where
+instance NFData text => NFData (StatementF text) where
   rnf = genericRnf
 
-data UnitF t
+data UnitF text
   = Unit {
-      unit :: DList (StatementF t)
+      unit :: DList (StatementF text)
     } deriving (Show, Generic, Functor)
 type Unit = UnitF ByteString
 
-instance NFData t => NFData (UnitF t) where
+instance NFData text => NFData (UnitF text) where
 
 instance ToJSON a => ToJSON (DList a) where
     toJSON = fmap toJSON DList.toList
