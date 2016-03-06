@@ -63,12 +63,15 @@ state:-
   <0>      \,                      { tok         TokenComma            }
   <0>      \%                      { tok         TokenPercent          }
   <0>      \*                      { tok         TokenAsterik          }
-  <0>      \$ \.                   { tok         TokenDollarDot        }
+  <0>      \$ [\. \@ \^ \< \|]
+                                   { tokDC       1 Nothing             }
+  <0>      \$ \( [\@ \^ \< \|] (D|F) \)
+                                   { tokDC       2 (Just 3)            }
   <0>      \$                      { tok         TokenDollar           }
-  <0>      [ \n ]+ [ \t ]          { tok         TokenNewLineAndTab              }
+  <0>      [ \n ]+ [ \t ]          { tok         TokenNewLineAndTab    }
   <0>      \\ \n                   ;
-  <0>      \\ \#                   { tokStr      TokenOther             }
-  <0>      \\ .                    { tokStr      TokenOther             }
+  <0>      \\ \#                   { tokStr      TokenOther            }
+  <0>      \\ .                    { tokStr      TokenOther            }
   <0>      \n                      { tok         TokenNewLine          }
   <0>      \# .*                   ;
 
@@ -90,6 +93,9 @@ tok' r f (p, _, input, _) len = do
 tok x = tok' Nothing (\s -> x)
 mkStr = BS.pack . B.unpack
 tokStr x = tok' Nothing (\s -> x s)
+
+tokDC varP modP =
+    tok' Nothing (\s -> TokenDollarChar ((B.index s varP), (fmap (\x -> B.index s x) modP)))
 
 alexStructError (line, column, e) = alexError $ "show-error: " ++ (show (line, column, e))
 token_fail e ((AlexPn _ line column), _, input) len = alexStructError (line, column, e :: String)
@@ -129,7 +135,7 @@ data TokenClass
  | TokenPercent
  | TokenAsterik
  | TokenDollar
- | TokenDollarDot
+ | TokenDollarChar (Char, Maybe Char)
  | TokenIfNEq
  | TokenIfEq
  | TokenElse

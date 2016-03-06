@@ -29,7 +29,7 @@ import Data.ByteString.Lazy (ByteString)
         else            { Token _ TokenElse            }
         endif           { Token _ TokenEndif           }
 
-        OTHER           { Token _ (TokenOther $$)       }
+        OTHER           { Token _ (TokenOther $$)      }
         SPACES          { Token _ (TokenWhitespace $$) }
 
         "="             { Token _ TokenEqual           }
@@ -43,8 +43,8 @@ import Data.ByteString.Lazy (ByteString)
         "%"             { Token _ TokenPercent         }
         "*"             { Token _ TokenAsterik         }
         "$"             { Token _ TokenDollar          }
-        "$."            { Token _ TokenDollarDot       }
-        TAB             { Token _ TokenNewLineAndTab             }
+        DC              { Token _ (TokenDollarChar $$) }
+        TAB             { Token _ TokenNewLineAndTab   }
         NEWLINE         { Token _ TokenNewLine         }
 
 %%
@@ -101,7 +101,7 @@ ExprList :: {Expr}
 
 ExprOne :: {ExprOne}
       : OTHER                         { Str $1 }
-      | "$."                          { VarSimple "." }
+      | DC                            { parseDCToken $1 }
       | "$" "{" OTHER "}"             { VarSimple $3 }
       | "{" ExprCommaList "}"         { Multi $2 }
       | SPACES                        { Spaces }
@@ -111,7 +111,7 @@ ExprOne :: {ExprOne}
 
 ExprOneP :: {ExprOne}
       : OTHER                         { Str $1 }
-      | "$."                          { VarSimple "." }
+      | DC                            { parseDCToken $1 }
       | "$" "{" OTHER "}"             { VarSimple $3 }
       | "{" ExprCommaList "}"         { Multi $2 }
       | SPACES                        { Spaces }
@@ -136,7 +136,7 @@ TgtExprList :: {Expr}
 TgtExprOne :: {ExprOne}
       : OTHER                         { Str $1 }
       | SPACES                        { Spaces }
-      | "$."                          { VarSimple "." }
+      | DC                            { parseDCToken $1 }
       | "$" "{" OTHER "}"             { VarSimple $3 }
       | "$"                           { Str "$" }
       | "{" ExprCommaList "}"         { Multi $2 }

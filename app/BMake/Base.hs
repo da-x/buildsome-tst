@@ -13,6 +13,7 @@ module BMake.Base
   , Token(..)
   , TokenClass(..)
   , AlexState(..)
+  , parseDCToken
   , lexer
   , UnitF(..)
   , Unit
@@ -26,14 +27,15 @@ module BMake.Base
   where
 
 --------------------------------------------------------------------------------
-import           Control.DeepSeq      (NFData (..))
+import           Control.DeepSeq          (NFData (..))
+import           Control.DeepSeq.Generics (genericRnf)
 import           Data.Aeson
-import           Data.ByteString.Lazy (ByteString)
-import           Data.DList           (DList)
-import qualified Data.DList           as DList
+import           Data.ByteString.Lazy     (ByteString)
+import           Data.DList               (DList)
+import qualified Data.DList               as DList
+import           Data.String              (IsString)
 import           Data.Text
 import           GHC.Generics
-import           Control.DeepSeq.Generics (genericRnf)
 ----
 import           BMake.Lexer
 --------------------------------------------------------------------------------
@@ -54,12 +56,48 @@ happyError = do
   (AlexPn _ line col) <- alexGetPosition
   alexStructError (line, col, "syntax error" :: String)
 
+data SpecialFlag
+  = FirstOutput
+  | FirstInput
+  | AllInputs
+  | AllOOInputs
+  deriving (Show, Generic)
+instance ToJSON SpecialFlag where
+instance NFData SpecialFlag where
+  rnf = genericRnf
+
+data SpecialModifier
+  = NoMod
+  | ModFile
+  | ModDir
+  deriving (Show, Generic)
+instance ToJSON SpecialModifier where
+
+instance NFData SpecialModifier where
+  rnf = genericRnf
+
 data ExprOneF t
   = Str t
   | Multi (DList (ExprF t))
   | Spaces
+  | VarSpecial SpecialFlag SpecialModifier
   | VarSimple t
   deriving (Show, Generic, Functor)
+
+parseDCToken :: IsString t => (Char, Maybe Char) -> ExprOneF t
+parseDCToken ('.', Nothing) = VarSimple "."
+parseDCToken (other, mods) =
+    VarSpecial (case other of
+                '@' -> FirstOutput
+                '<' -> FirstInput
+                '^' -> AllInputs
+                '|' -> AllOOInputs
+                _ -> error $ "unexpected lexing input" ++ show other)
+               (case mods of
+                 Just 'F' -> ModFile
+                 Just 'D' -> ModDir
+                 Nothing -> NoMod
+                 _ -> error $ "unexpected lexing input" ++ show mods)
 
 instance (NFData t) => NFData (ExprOneF t) where
   rnf = genericRnf
@@ -105,6 +143,9 @@ instance ToJSON a => ToJSON (DList a) where
 instance ToJSON (ExprOneF Text) where
     toJSON (Str name) = String name
     toJSON (Spaces) = String " "
+    toJSON (VarSpecial vtype mods) =
+        object [ "varSpecial" .= vtype
+               , "varMod" .= mods ]
     toJSON (VarSimple name) =
         object [ "var" .= String name ]
     toJSON (Multi lst) =
