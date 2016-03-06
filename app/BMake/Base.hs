@@ -15,7 +15,7 @@ module BMake.Base
   , AlexState(..)
   , parseDCToken
   , lexer
-  , AssignType(..)
+  , AssignType(..), IfCmpType(..)
   , UnitF(..)
   , Unit
   , StatementF(..), substmts
@@ -113,12 +113,17 @@ data AssignType = AssignNormal | AssignConditional
 instance NFData AssignType where
 instance ToJSON AssignType where
 
+data IfCmpType = IfEquals | IfNotEquals
+  deriving (Show, Generic)
+instance NFData IfCmpType where
+instance ToJSON IfCmpType where
+
 data StatementF t
   = Assign t AssignType (ExprF t)
   | Local (DList (StatementF t))
   | Target (ExprF t) (ExprF t) (DList (ExprF t))
   | Include t
-  | IfCmp Bool (ExprF t) (ExprF t) (DList (StatementF t)) (DList (StatementF t))
+  | IfCmp IfCmpType (ExprF t) (ExprF t) (DList (StatementF t)) (DList (StatementF t))
   deriving (Show, Generic, Functor)
 type Statement = StatementF ByteString
 

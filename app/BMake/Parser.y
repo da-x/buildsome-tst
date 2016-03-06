@@ -73,8 +73,8 @@ Statement :: {Maybe Statement}
                                       { Just $ Target $1 $5 $6 }
       | include MW OTHER              { Just $ Include $3 }
       | SPACES                        { Nothing }
-      | ifeq IFEQ                     { Just $ ($2) $ IfCmp True }
-      | ifneq IFEQ                    { Just $ ($2) $ IfCmp False }
+      | ifeq IFEQ                     { Just $ ($2) $ IfCmp IfEquals }
+      | ifneq IFEQ                    { Just $ ($2) $ IfCmp IfNotEquals }
 
 MAYBE_TARGET_BODY :: {DList Expr}
       :                               { DList.empty }
