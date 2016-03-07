@@ -113,23 +113,6 @@ Expr :: {Expr}
       | "*"                           { Str "*" }
       | "$"                           { Str "$" }
 
-ExprP :: {Expr}
-      : OTHER                         { Str $1 }
-      | DC                            { parseDCToken $1 }
-      | "$" "{" OTHER "}"             { VarSimple $3 }
-      | "{"                           { OpenBrace }
-      | "}"                           { CloseBrace }
-      | SPACES                        { Spaces }
-      | ","                           { Comma }
-      | "="                           { Str "=" }
-      | "?="                          { Str "?=" }
-      | ":"                           { Str ":" }
-      | "%"                           { Str "%" }
-      | "*"                           { Str "*" }
-      | "$"                           { Str "$" }
-      | "("                           { Str "(" }
-      | ")"                           { Str ")" }
-
 -- TODO: Check if base case of 1 is simpler than 2 rules?
 TgtExprListE :: {[Expr]}
       :                               { [] }
