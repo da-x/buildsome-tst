@@ -69,22 +69,22 @@ Statement :: {Maybe Statement}
       : local MW "{" StatementsDList local MW "}" { Just $ Local (DList.toList $4) }
       | OTHER MW "=" MW TgtExprListE   { Just $ Assign $1 AssignNormal $5 }
       | OTHER MW "?=" MW TgtExprListE  { Just $ Assign $1 AssignConditional $5 }
-      | ExprList MW ":" MW TgtExprListE MAYBE_TARGET_BODY
-                                      { Just $ Target $1 $5 $6 }
-      | include MW OTHER              { Just $ Include $3 }
-      | SPACES                        { Nothing }
-      | ifeq IFSTMT                   { Just $ ($2) $ IfCmp IfEquals }
-      | ifneq IFSTMT                  { Just $ ($2) $ IfCmp IfNotEquals }
+      | ExprList MW ":" MW TgtExprListE TgtScriptE
+                                       { Just $ Target $1 $5 $6 }
+      | include MW OTHER               { Just $ Include $3 }
+      | SPACES                         { Nothing }
+      | ifeq IfStmt                    { Just $ ($2) $ IfCmp IfEquals }
+      | ifneq IfStmt                   { Just $ ($2) $ IfCmp IfNotEquals }
 
-MAYBE_TARGET_BODY :: {[[Expr]]}
-      :                               { [] }
-      | TAB SCRIPTS                   { {-MAYBE_TARGET_BODY-}DList.toList $2 }
+TgtScriptE :: {[[Expr]]}
+      :                                { [] }
+      | TAB TgtScript                  { {-TgtScript-}DList.toList $2 }
 
-SCRIPTS :: {DList [Expr]}
-      : SCRIPTS TAB TgtExprListE      { $1 `DList.snoc` $3 }
+TgtScript :: {DList [Expr]}
+      : TgtScript TAB TgtExprListE    { $1 `DList.snoc` $3 }
       | TgtExprListE                  { DList.singleton $1 }
 
-IFSTMT -- TODO: Is this it? :: { [Expr] -> [Expr] -> [Statement] -> [Statement] -> Statement }
+IfStmt -- TODO: Is this it? :: { [Expr] -> [Expr] -> [Statement] -> [Statement] -> Statement }
       : MW "(" ExprListE "," ExprListE ")" NEWLINE StatementsDList else StatementsDList endif
                                       { \x -> x $3 $5 (DList.toList $8) (DList.toList $10) }
       | MW "(" ExprListE "," ExprListE ")" NEWLINE StatementsDList endif
@@ -112,6 +112,8 @@ Expr :: {Expr}
       | "%"                           { Str "%" }
       | "*"                           { Str "*" }
       | "$"                           { Str "$" }
+
+-- "TgtExpr" is a simple string as expr
 
 -- TODO: Check if base case of 1 is simpler than 2 rules?
 TgtExprListE :: {[Expr]}
