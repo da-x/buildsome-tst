@@ -22,6 +22,8 @@ import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
 
+import           Lib.Makefile.Types ()
+
 type Vars = Map ByteString [Expr]
 
 newtype Env = Env

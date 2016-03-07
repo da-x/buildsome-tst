@@ -1,2 +1,3 @@
 :set -Wall
 :set -iapp
+:set -isrc
