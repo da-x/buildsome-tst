@@ -185,27 +185,27 @@ local stmts =
         writeIORef varsRef varsSnapshot & liftIO
         return res
 
--- showExprL :: [Expr3] -> String
--- showExprL = concatMap showExpr
+showExprL :: [Expr3] -> String
+showExprL = concatMap showExpr
 
--- showExpr :: Expr3 -> String
--- showExpr (Expr3'Str text) = BS8.unpack text
--- showExpr Expr3'Spaces = " "
--- showExpr (Expr3'VarSpecial specialFlag specialModifier) =
---     "$" ++ wrap flagChar
---     where
---         flagChar =
---             case specialFlag of
---             FirstOutput -> "@"
---             FirstInput -> "<"
---             AllInputs -> "^"
---             AllOOInputs -> "|"
---             Stem -> "*"
---         wrap =
---             case specialModifier of
---             NoMod -> id
---             ModFile -> ('(':) . (++"F)")
---             ModDir -> ('(':) . (++"D)")
+showExpr :: Expr3 -> String
+showExpr (Expr3'Str text) = BS8.unpack text
+showExpr Expr3'Spaces = " "
+showExpr (Expr3'VarSpecial specialFlag specialModifier) =
+    "$" ++ wrap flagChar
+    where
+        flagChar =
+            case specialFlag of
+            FirstOutput -> "@"
+            FirstInput -> "<"
+            AllInputs -> "^"
+            AllOOInputs -> "|"
+            Stem -> "*"
+        wrap =
+            case specialModifier of
+            NoMod -> id
+            ModFile -> ('(':) . (++"F)")
+            ModDir -> ('(':) . (++"D)")
 
 statements :: [Statement] -> M ()
 statements = mapM_ statement
@@ -215,16 +215,18 @@ target outputs inputs {-orderOnly-} script =
     do
         vars <- Reader.asks envVars >>= liftIO . readIORef
         let norm = normalize vars
---        let put = liftIO . putStrLn
-        _ <- liftIO $ evaluate $ force $ norm outputs
-        _ <- liftIO $ evaluate $ force $ norm inputs
-        _ <- liftIO $ evaluate $ force $ map norm script
+        outs  <- liftIO $ evaluate $ force $ norm outputs
+        ins   <- liftIO $ evaluate $ force $ norm inputs
+        scrps <- liftIO $ evaluate $ force $ map norm script
+
+        let put = liftIO . putStrLn
+        put "target:"
+        put $ "     outs: " ++ showExprL outs
+        put $ "     ins:  " ++ showExprL ins
+        put $ "     script:"
+        put $ show scrps
+        mapM_ (put . ("        "++) . showExprL) scrps
         return ()
-        -- put "target:"
-        -- put $ "  outs: " ++ showExprL (norm outputs)
-        -- put $ "  ins:  " ++ showExprL (norm inputs)
-        -- put $ "  script:"
-        -- mapM_ (put . ("    "++) . showExprL . norm) script
 
 -- Expanded exprs given!
 -- TODO: Consider type-level marking of "expanded" exprs
