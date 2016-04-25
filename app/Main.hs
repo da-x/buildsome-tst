@@ -23,7 +23,7 @@ import           BMake.Base                 (Makefile, MakefileF (..),
                                              Statement, StatementF (..),
                                              substmts)
 import           BMake.Interpreter          (interpret)
-import           BMake.User                 (Error, parseMakefile)
+import           BMake.User                 (Error(..), parseMakefile)
 import qualified Lib.Makefile.Parser        as OLD
 import           Lib.TimeIt                 (printTimeIt)
 ------------------------------------------------------------------------------------------
@@ -81,7 +81,8 @@ newParse cache rootDir =
         let dirs = Dirs rootDir (FilePath.takeDirectory makefile)
         res <- parseSingle content
         case res of
-            Left x -> fail $ show x
+            Left (Error line col str) ->
+                fail $ makefile ++ ":" ++ show line ++ ":" ++ show col ++ ": " ++ str
             Right ast -> do
                 ast' <- Makefile <$> handleIncludes cache dirs (unit ast)
                 return ast'
