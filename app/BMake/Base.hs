@@ -39,6 +39,7 @@ import           Data.Text
 import           GHC.Generics
 ----
 import           BMake.Lexer
+import           BMake.Data
 --------------------------------------------------------------------------------
 
 type Parser a = Alex a
@@ -56,26 +57,6 @@ happyError :: Parser a
 happyError = do
   (AlexPn _ line col) <- alexGetPosition
   alexStructError (line, col, "syntax error" :: String)
-
-data MetaVar
-  = FirstOutput
-  | FirstInput
-  | AllInputs
-  | AllOOInputs
-  | Stem
-  deriving (Eq, Ord, Show, Generic)
-instance ToJSON MetaVar where
-instance NFData MetaVar where
-  rnf = genericRnf
-
-data MetaVarModifier
-  = NoMod
-  | ModFile
-  | ModDir
-  deriving (Eq, Ord, Show, Generic)
-instance ToJSON MetaVarModifier where
-instance NFData MetaVarModifier where
-  rnf = genericRnf
 
 data ExprF text
   = Str text

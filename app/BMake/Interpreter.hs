@@ -8,6 +8,7 @@ module BMake.Interpreter
     ) where
 
 import           BMake.Base
+import           BMake.Data
 import           Control.DeepSeq (NFData(..), force)
 import           Control.Exception (evaluate)
 import           Control.Monad.IO.Class (MonadIO(..))
@@ -73,13 +74,6 @@ data Expr2
   deriving (Eq, Ord, Show, Generic)
 instance NFData Expr2
 
--- | Expr2 after Group expansions
-data Expr3
-  = Expr3'Str ByteString
-  | Expr3'Spaces
-  | Expr3'VarSpecial MetaVar MetaVarModifier
-  deriving (Eq, Ord, Show, Generic)
-instance NFData Expr3
 
 {- TODO:
 data ExprTopLevel
