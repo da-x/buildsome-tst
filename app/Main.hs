@@ -104,7 +104,7 @@ main = do
                 newParse cache (FilePath.takeDirectory makefilePath) makefilePath
                 -- let astf = T.decodeUtf8 . B.concat . BL.toChunks <$> ast
                 -- B.putStr $ YAML.encodePretty YAML.defConfig astf
-            printTimeIt "total" $ interpret ast
+            printTimeIt "total" $ interpret ast Map.empty
 
     let oldCode makefilePath = do
             putStrLn "Running old Makefile parser:"

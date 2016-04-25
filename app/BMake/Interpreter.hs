@@ -22,7 +22,7 @@ import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
 
-import           Lib.Makefile.Types ()
+import qualified Lib.Makefile.Types as MT
 
 type Vars = Map ByteString [Expr]
 
@@ -32,16 +32,18 @@ newtype Env = Env
 
 type M = ReaderT Env IO
 
-run :: M a -> IO a
-run act =
+run :: MT.Vars -> M a -> IO a
+run vars act =
     do
-        varsRef <- newIORef Map.empty
+        let x = Map.fromList $ map (\(k, v) ->
+              (BS8.fromChunks [k], [Str $ BS8.fromChunks [v]])) $ Map.toList vars
+        varsRef <- newIORef x
         runReaderT act Env
             { envVars = varsRef
             }
 
-interpret :: Makefile -> IO ()
-interpret = run . makefile
+interpret :: Makefile -> MT.Vars -> IO ()
+interpret bmakefile vars = (run vars) . makefile $ bmakefile
 
 -- | Expr after variable substitution
 data Expr1
