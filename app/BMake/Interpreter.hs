@@ -12,10 +12,10 @@ import           Control.Monad.IO.Class (MonadIO(..))
 import           Control.Monad.Trans.Reader (ReaderT(..))
 import qualified Control.Monad.Trans.Reader as Reader
 import           Data.ByteString.Lazy (ByteString)
--- import qualified Data.ByteString.Lazy.Char8 as BS8
+import qualified Data.ByteString.Lazy.Char8 as BS8
 import           Data.Function ((&))
 import           Data.IORef
-import           Data.List (intercalate)
+import           Data.List (intercalate, span)
 import           Data.List.Split (splitOn)
 import           Data.Map (Map)
 import qualified Data.Map as Map
@@ -135,10 +135,25 @@ parseGroups = \case
 
 
 cartesian :: [Expr2] -> [Expr3]
-cartesian input =
+cartesian input = compress afterExpand
 --    (\output -> trace ("cartesian input: " ++ show input ++ "\n   output: " ++ show output) output) .
-    unwords2 . map unwords2 . map go . splitOn [Expr2'Spaces] $ input
     where
+        compress [] = []
+        compress xs' =
+            case span spaceOrStr xs' of
+                ([], (x:xs)) -> x:compress xs
+                ([x], xs)    -> x:compress xs
+                (ys, xs)     -> (Expr3'Str $ BS8.concat $ map toStr ys):compress xs
+
+        spaceOrStr Expr3'Spaces  = True
+        spaceOrStr (Expr3'Str _) = True
+        spaceOrStr _             = False
+
+        toStr Expr3'Spaces       = " "
+        toStr (Expr3'Str s)      = s
+        toStr _                  = ""
+
+        afterExpand = unwords2 . map unwords2 . map go . splitOn [Expr2'Spaces] $ input
         unwords2 = intercalate [Expr3'Spaces]
         go :: [Expr2] -> [[Expr3]]
         go (Expr2'Spaces:_) = error "splitOn should leave no Spaces!"
