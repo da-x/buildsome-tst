@@ -7,6 +7,7 @@ module Main (main) where
 ------------------------------------------------------------------------------------------
 import           Control.DeepSeq            (force)
 import           Control.Exception          (evaluate)
+import           Control.Monad              (forM_)
 import qualified Data.ByteString.Char8      as B8
 import qualified Data.ByteString.Lazy       as BL
 import qualified Data.ByteString.Lazy.Char8 as BL8
@@ -23,7 +24,8 @@ import           BMake.Base                 (Makefile, MakefileF (..),
                                              Statement, StatementF (..),
                                              substmts)
 import           BMake.Interpreter          (interpret)
-import           BMake.User                 (Error(..), parseMakefile)
+import           BMake.User                 (Error (..), parseMakefile,
+                                             parseWithAlex, stateBase)
 import qualified Lib.Makefile.Parser        as OLD
 import           Lib.TimeIt                 (printTimeIt)
 ------------------------------------------------------------------------------------------
@@ -81,7 +83,11 @@ newParse cache rootDir =
         let dirs = Dirs rootDir (FilePath.takeDirectory makefile)
         res <- parseSingle content
         case res of
-            Left (Error line col str) ->
+            Left (Error line col str) -> do
+                case parseWithAlex stateBase content of
+                    Right tokens -> do
+                        forM_ tokens print
+                    Left _ -> return ()
                 fail $ makefile ++ ":" ++ show line ++ ":" ++ show col ++ ": " ++ str
             Right ast -> do
                 ast' <- Makefile <$> handleIncludes cache dirs (unit ast)
