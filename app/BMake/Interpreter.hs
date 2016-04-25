@@ -1,6 +1,8 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# language LambdaCase #-}
+{-# LANGUAGE RecordWildCards   #-}
+
 module BMake.Interpreter
     ( interpret
     ) where
@@ -26,8 +28,10 @@ import qualified Lib.Makefile.Types as MT
 
 type Vars = Map ByteString [Expr]
 
-newtype Env = Env
+data Env = Env
     { envVars :: IORef Vars
+    , envTargets :: IORef [MT.Target]
+    , envPatterns :: IORef [MT.Pattern]
     }
 
 type M = ReaderT Env IO
@@ -38,11 +42,15 @@ run vars act =
         let x = Map.fromList $ map (\(k, v) ->
               (BS8.fromChunks [k], [Str $ BS8.fromChunks [v]])) $ Map.toList vars
         varsRef <- newIORef x
+        a <- newIORef []
+        b <- newIORef []
         runReaderT act Env
             { envVars = varsRef
+            , envTargets = a
+            , envPatterns = b
             }
 
-interpret :: Makefile -> MT.Vars -> IO ()
+interpret :: Makefile -> MT.Vars -> IO MT.Makefile
 interpret bmakefile vars = (run vars) . makefile $ bmakefile
 
 -- | Expr after variable substitution
@@ -79,8 +87,20 @@ data ExprTopLevel
   | ExprTopLevel'Spaces
 -}
 
-makefile :: Makefile -> M ()
-makefile (Makefile stmts) = statements stmts
+makefile :: Makefile -> M MT.Makefile
+makefile (Makefile stmts) =
+    do statements stmts
+
+       Env{..} <- Reader.ask
+       a <- liftIO $ readIORef envTargets
+       b <- liftIO $ readIORef envPatterns
+
+       return $ MT.Makefile {
+            MT.makefileTargets = a
+          , MT.makefilePatterns = b
+          , MT.makefilePhonies = [] -- TODO
+          , MT.makefileWeakVars = Map.fromList [] -- TODO
+          }
 
 -- TODO: Take the data ctors so it can generate an ExprTopLevel
 subst :: Vars -> [Expr] -> [Expr1]
