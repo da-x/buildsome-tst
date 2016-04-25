@@ -26,6 +26,7 @@ import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
+import qualified Text.Parsec.Pos as ParsecPos
 
 import qualified Lib.FilePath as FilePath
 import qualified Lib.StringPattern as StringPattern
@@ -34,9 +35,11 @@ import qualified Lib.Makefile.Types as MT
 type Vars = Map ByteString [Expr]
 
 data Env = Env
-    { envVars :: IORef Vars
-    , envTargets :: IORef [MT.Target]
+    { envVars     :: IORef Vars
+    , envTargets  :: IORef [MT.Target]
     , envPatterns :: IORef [MT.Pattern]
+    , envPhonies  :: IORef [(ParsecPos.SourcePos, FilePath.FilePath)]
+    , envWeakVars :: IORef MT.Vars
     }
 
 type M = ReaderT Env IO
@@ -49,10 +52,14 @@ run vars act =
         varsRef <- newIORef x
         a <- newIORef []
         b <- newIORef []
+        c <- newIORef []
+        d <- newIORef Map.empty
         runReaderT act Env
             { envVars = varsRef
             , envTargets = a
             , envPatterns = b
+            , envPhonies = c
+            , envWeakVars = d
             }
 
 interpret :: Makefile -> MT.Vars -> IO MT.Makefile
@@ -90,14 +97,16 @@ makefile (Makefile stmts) =
     do statements stmts
 
        Env{..} <- Reader.ask
-       a <- liftIO $ readIORef envTargets
-       b <- liftIO $ readIORef envPatterns
+       tgts <- liftIO $ readIORef envTargets
+       pats <- liftIO $ readIORef envPatterns
+       phonies <- liftIO $ readIORef envPhonies
+       weakVars <- liftIO $ readIORef envWeakVars
 
        return $ MT.Makefile {
-            MT.makefileTargets = a
-          , MT.makefilePatterns = b
-          , MT.makefilePhonies = [] -- TODO
-          , MT.makefileWeakVars = Map.fromList [] -- TODO
+            MT.makefileTargets = tgts
+          , MT.makefilePatterns = pats
+          , MT.makefilePhonies = phonies
+          , MT.makefileWeakVars = weakVars
           }
 
 -- TODO: Take the data ctors so it can generate an ExprTopLevel
@@ -198,6 +207,7 @@ assign name assignType exprL =
         varsRef <- Reader.asks envVars
         let f AssignConditional (Just old) = Just old
             f _ _ = Just exprL
+        -- ToDo: add to weakvars
         Map.alter (f assignType) name
             & modifyIORef' varsRef
             & liftIO
@@ -245,11 +255,25 @@ mkFilePattern path
   where
     (dir, file) = FilePath.splitFileName path
 
+hasPatterns :: [Expr3] -> Bool
+hasPatterns ((Expr3'Str text):xs) =
+    case any ("%" `BS8.isInfixOf`) (BSL8.toChunks text) of
+        True -> True
+        False -> hasPatterns xs
+hasPatterns (_:xs) = hasPatterns xs
+hasPatterns [] = False
+
+toFileNames :: [Expr3] -> [FilePath.FilePath]
+toFileNames ((Expr3'Str text):xs) = (BS8.concat . BSL8.toChunks) text : toFileNames xs
+toFileNames (_:xs)                = toFileNames xs
+toFileNames []                    = []
+
 target :: [Expr] -> [Expr] -> [[Expr]] -> M ()
 target outputs inputs {-orderOnly-} script =
     do
         vars <- Reader.asks envVars >>= liftIO . readIORef
         let norm = normalize vars
+        let orderOnlyInputs = [] -- ToDo
         outs  <- liftIO $ evaluate $ force $ compress WithoutSpace $ norm outputs
         ins   <- liftIO $ evaluate $ force $ compress WithoutSpace $ norm inputs
         scrps <- liftIO $ evaluate $ force $ map (compress WithSpace . norm) script
@@ -265,7 +289,42 @@ target outputs inputs {-orderOnly-} script =
                 put $ show outs
                 put $ show scrps
                 mapM_ (put . ("        "++) . showExprL) scrps
-        return ()
+
+        _dump
+
+        Env{..} <- Reader.ask
+        let inputPaths = toFileNames ins
+        let outputPaths = toFileNames outs
+        let pos = ParsecPos.newPos "" 0 0 -- ToDo
+
+        case hasPatterns outs of
+            True -> do
+                let mkOutputPattern outputPath =
+                      fromMaybe (error ("Outputs must all be patterns (contain %) in pattern rules: " ++ show outputPath)) $
+                      mkFilePattern outputPath
+                let tryMakePattern path =
+                          maybe (MT.InputPath path) MT.InputPattern $ mkFilePattern path
+                let inputPats = map tryMakePattern inputPaths
+                let orderOnlyInputPats = map tryMakePattern orderOnlyInputs
+                let modf xs = MT.Target
+                      { targetOutputs = map mkOutputPattern outputPaths
+                      , targetInputs = inputPats
+                      , targetOrderOnlyInputs = orderOnlyInputPats
+                      , targetCmds = Right scrps
+                      , targetPos = pos
+                      } : xs
+                liftIO $ modifyIORef' envPatterns modf
+                return ()
+            False -> do
+                -- ToDo: add to phonies if need be
+                let modf xs = MT.Target
+                      { targetOutputs = outputPaths
+                      , targetInputs = inputPaths
+                      , targetOrderOnlyInputs = [] -- ToDo
+                      , targetCmds = Right scrps
+                      , targetPos = pos
+                      } : xs
+                liftIO $ modifyIORef' envTargets modf
 
 -- Expanded exprs given!
 -- TODO: Consider type-level marking of "expanded" exprs

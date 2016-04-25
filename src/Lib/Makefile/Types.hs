@@ -30,8 +30,8 @@ data TargetType output input = Target
   { targetOutputs :: [output]
   , targetInputs :: [input]
   , targetOrderOnlyInputs :: [input]
-  , targetCmds :: Either ByteString [Expr3] -- ToDo: Should be [Expr3] only
-                                            -- it's transitory.
+  , targetCmds :: Either ByteString [[Expr3]] -- ToDo: Should be [Expr3] only
+                                              -- it's transitory.
   , targetPos :: ParsecPos.SourcePos
   } deriving (Show, Generic)
 instance (Binary output, Binary input) => Binary (TargetType output input)
