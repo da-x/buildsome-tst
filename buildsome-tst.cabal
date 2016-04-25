@@ -24,6 +24,13 @@ executable buildsome-tst-exe
                      , Lib.ByteString
                      , Lib.StringPattern
                      , Lib.Makefile.Types
+                     , Lib.Cartesian
+                     , Lib.FilePath
+                     , Lib.Makefile.CondState
+                     , Lib.Makefile.MonadClass
+                     , Lib.Makefile.Parser
+                     , Lib.Parsec
+                     , Lib.TimeIt
 
   ghc-options:       -threaded -Wall -O2 -fsimpl-tick-factor=1000 -rtsopts -with-rtsopts=-A16M -fwarn-incomplete-uni-patterns
   ghc-prof-options:  -auto-all -caf-all -rtsopts

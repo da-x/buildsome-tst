@@ -6,7 +6,7 @@ module Lib.Makefile.Types
   , InputPat(..), onInputPatPaths
   , Target, onTargetPaths
   , Pattern, onPatternPaths
-  , VarName, VarValue
+  , VarName, VarValue, Vars
   , Makefile(..), onMakefilePaths
   ) where
 
@@ -21,16 +21,16 @@ import Data.Map (Map)
 
 import GHC.Generics (Generic)
 import Lib.FilePath (FilePath)
+import Lib.Parsec () -- instance Binary SourcePos
 import Lib.StringPattern (StringPattern)
-
-type SourcePos = ()
+import qualified Text.Parsec.Pos as ParsecPos
 
 data TargetType output input = Target
   { targetOutputs :: [output]
   , targetInputs :: [input]
   , targetOrderOnlyInputs :: [input]
   , targetCmds :: ByteString
-  , targetPos :: SourcePos
+  , targetPos :: ParsecPos.SourcePos
   } deriving (Show, Generic)
 instance (Binary output, Binary input) => Binary (TargetType output input)
 instance (NFData output, NFData input) => NFData (TargetType output input) where
@@ -54,12 +54,13 @@ type Pattern = TargetType FilePattern InputPat
 
 type VarName = ByteString
 type VarValue = ByteString
+type Vars = Map VarName VarValue
 
 data Makefile = Makefile
   { makefileTargets :: [Target]
   , makefilePatterns :: [Pattern]
-  , makefilePhonies :: [(SourcePos, FilePath)]
-  , makefileWeakVars :: Map VarName VarValue
+  , makefilePhonies :: [(ParsecPos.SourcePos, FilePath)]
+  , makefileWeakVars :: Vars
   } deriving (Show, Generic)
 instance Binary Makefile
 instance NFData Makefile where rnf = genericRnf

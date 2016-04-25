@@ -1,37 +1,44 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main (main) where
 
-import           BMake.Base (Makefile, MakefileF(..), Statement, StatementF(..), substmts)
-import           BMake.Interpreter (interpret)
-import           BMake.User (Error, parseMakefile)
-import           Control.DeepSeq (force)
-import           Control.Exception (evaluate)
--- import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
+------------------------------------------------------------------------------------------
+import           Control.DeepSeq            (force)
+import           Control.Exception          (evaluate)
+import qualified Data.ByteString.Char8      as B8
+import qualified Data.ByteString.Lazy       as BL
 import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.IORef
-import           Data.Map (Map)
-import qualified Data.Map as Map
+import           Data.Map                   (Map)
+import qualified Data.Map                   as Map
 -- import qualified Data.Text.Encoding as T
 -- import qualified Data.Yaml.Pretty as YAML
-import           Lib.TimeIt (printTimeIt)
-import           System.Environment (getArgs)
-import           System.FilePath ((</>))
-import qualified System.FilePath as FilePath
+import           System.Environment         (getArgs)
+import           System.FilePath            ((</>))
+import qualified System.FilePath            as FilePath
+----
+import           BMake.Base                 (Makefile, MakefileF (..),
+                                             Statement, StatementF (..),
+                                             substmts)
+import           BMake.Interpreter          (interpret)
+import           BMake.User                 (Error, parseMakefile)
+import qualified Lib.Makefile.Parser        as OLD
+import           Lib.TimeIt                 (printTimeIt)
+------------------------------------------------------------------------------------------
 
 type Cache k v = IORef (Map k v)
 
 type ParseCache = Cache FilePath Makefile
 
 data Dirs = Dirs
-    { dirsRoot :: FilePath
+    { dirsRoot        :: FilePath
     , dirsCurMakefile :: FilePath
     }
 
 handleIncludePath :: ParseCache -> Dirs -> FilePath -> IO [Statement]
-handleIncludePath cache dirs = fmap unit . parse cache (dirsRoot dirs)
+handleIncludePath cache dirs = fmap unit . newParse cache (dirsRoot dirs)
 
 handleIncludeStr :: ParseCache -> Dirs -> FilePath -> IO [Statement]
 handleIncludeStr cache dirs ('/':path) = handleIncludePath cache dirs $ dirsRoot dirs </> path
@@ -66,8 +73,8 @@ memoIO cache action k =
                     modifyIORef cache $ Map.insert k v
                     return v
 
-parse :: ParseCache -> FilePath -> FilePath -> IO Makefile
-parse cache rootDir =
+newParse :: ParseCache -> FilePath -> FilePath -> IO Makefile
+newParse cache rootDir =
     memoIO cache $ \makefile -> do
         content <- BL.readFile makefile
         -- putStrLn makefile
@@ -82,11 +89,31 @@ parse cache rootDir =
 main :: IO ()
 main = do
     cache <- newIORef Map.empty
-    [makefile] <- getArgs
-    ast <-
-        printTimeIt "total" $
-        parse cache (FilePath.takeDirectory makefile) makefile
---    let astf = T.decodeUtf8 . B.concat . BL.toChunks <$> ast
---    B.putStr $ YAML.encodePretty YAML.defConfig astf
-    printTimeIt "total" $ interpret ast
-    return ()
+
+    let newCode makefilePath = do
+            putStrLn "New Makefile parser:"
+            ast <-
+                printTimeIt "total" $
+                newParse cache (FilePath.takeDirectory makefilePath) makefilePath
+                -- let astf = T.decodeUtf8 . B.concat . BL.toChunks <$> ast
+                -- B.putStr $ YAML.encodePretty YAML.defConfig astf
+            printTimeIt "total" $ interpret ast
+
+    let oldCode makefilePath = do
+            putStrLn "Running old Makefile parser:"
+            printTimeIt "total" $ do
+                _ <- OLD.parse (B8.pack makefilePath) Map.empty
+                return ()
+
+    getArgs >>= \case
+        [] -> putStrLn "No parameters given"
+        ["new", makefilePath] -> do
+            newCode makefilePath
+
+        ["old", makefilePath] -> do
+            newCode makefilePath
+
+        [makefilePath] -> do
+            oldCode makefilePath
+            newCode makefilePath
+        _  -> putStrLn "Invalid command line"
