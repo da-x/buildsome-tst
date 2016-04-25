@@ -16,7 +16,8 @@ import           Control.Monad.IO.Class (MonadIO(..))
 import           Control.Monad.Trans.Reader (ReaderT(..))
 import qualified Control.Monad.Trans.Reader as Reader
 import           Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as BS8
+import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString.Lazy.Char8 as BSL8
 import           Data.Function ((&))
 import           Data.IORef
 import           Data.List (intercalate)
@@ -26,6 +27,8 @@ import qualified Data.Map as Map
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
 
+import qualified Lib.FilePath as FilePath
+import qualified Lib.StringPattern as StringPattern
 import qualified Lib.Makefile.Types as MT
 
 type Vars = Map ByteString [Expr]
@@ -42,7 +45,7 @@ run :: MT.Vars -> M a -> IO a
 run vars act =
     do
         let x = Map.fromList $ map (\(k, v) ->
-              (BS8.fromChunks [k], [Str $ BS8.fromChunks [v]])) $ Map.toList vars
+              (BSL8.fromChunks [k], [Str $ BSL8.fromChunks [v]])) $ Map.toList vars
         varsRef <- newIORef x
         a <- newIORef []
         b <- newIORef []
@@ -159,7 +162,7 @@ compress cd xs' =
     case span spaceOrStr xs' of
         ([], (x:xs)) -> x:compress cd xs
         ([x], xs)    -> x:compress cd xs
-        (ys, xs)     -> (Expr3'Str $ BS8.concat $ map toStr ys):compress cd xs
+        (ys, xs)     -> (Expr3'Str $ BSL8.concat $ map toStr ys):compress cd xs
 
   where
     ws = cd == WithSpace
@@ -212,7 +215,7 @@ showExprL :: [Expr3] -> String
 showExprL = concatMap showExpr
 
 showExpr :: Expr3 -> String
-showExpr (Expr3'Str text) = BS8.unpack text
+showExpr (Expr3'Str text) = BSL8.unpack text
 showExpr Expr3'Spaces = " "
 showExpr (Expr3'VarSpecial specialFlag specialModifier) =
     "$" ++ wrap flagChar
@@ -232,6 +235,15 @@ showExpr (Expr3'VarSpecial specialFlag specialModifier) =
 
 statements :: [Statement] -> M ()
 statements = mapM_ statement
+
+mkFilePattern :: FilePath.FilePath -> Maybe MT.FilePattern
+mkFilePattern path
+  | "%" `BS8.isInfixOf` dir =
+    -- ToDo: improve error reporting here, don't use 'error'.
+    error $ "Directory component may not be a pattern: " ++ show path
+  | otherwise = MT.FilePattern dir <$> StringPattern.fromString file
+  where
+    (dir, file) = FilePath.splitFileName path
 
 target :: [Expr] -> [Expr] -> [[Expr]] -> M ()
 target outputs inputs {-orderOnly-} script =
