@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module BMake.Interpreter
     ( interpret
@@ -242,14 +243,16 @@ target outputs inputs {-orderOnly-} script =
         scrps <- liftIO $ evaluate $ force $ map (compress WithSpace . norm) script
 
         let put = liftIO . putStrLn
-        put "target:"
-        put $ "     outs: " ++ showExprL outs
-        put $ "     ins:  " ++ showExprL ins
-        put $ "     script:"
-        put $ show ins
-        put $ show outs
-        put $ show scrps
-        mapM_ (put . ("        "++) . showExprL) scrps
+        let _dump =
+              do
+                put "target:"
+                put $ "     outs: " ++ showExprL outs
+                put $ "     ins:  " ++ showExprL ins
+                put $ "     script:"
+                put $ show ins
+                put $ show outs
+                put $ show scrps
+                mapM_ (put . ("        "++) . showExprL) scrps
         return ()
 
 -- Expanded exprs given!
