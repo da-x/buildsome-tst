@@ -85,9 +85,9 @@ TgtScript :: {DList [Expr]}
       | TgtExprListE                  { DList.singleton $1 }
 
 IfStmt -- TODO: Is this it? :: { [Expr] -> [Expr] -> [Statement] -> [Statement] -> Statement }
-      : MW "(" ExprListE "," ExprListE ")" NEWLINE StatementsDList else StatementsDList endif
+      : MW "(" NoCommaExprListE "," NoCommaExprListE ")" NEWLINE StatementsDList else StatementsDList endif
                                       { \x -> x $3 $5 (DList.toList $8) (DList.toList $10) }
-      | MW "(" ExprListE "," ExprListE ")" NEWLINE StatementsDList endif
+      | MW "(" NoCommaExprListE "," NoCommaExprListE ")" NEWLINE StatementsDList endif
                                       { \x -> x $3 $5 (DList.toList $8) [] }
 
 ExprListE :: {[Expr]}
@@ -103,6 +103,31 @@ ExprDList :: {DList Expr}
       | Expr                       { DList.singleton $1 }
 
 Expr :: {Expr}
+      : OTHER                         { Str $1 }
+      | DC                            { parseDCToken $1 }
+      | "$" "{" OTHER "}"             { VarSimple $3 }
+      | "{"                           { OpenBrace }
+      | "}"                           { CloseBrace }
+      | SPACES                        { Spaces }
+      | ","                           { Comma }
+      | "%"                           { Str "%" }
+      | "*"                           { Str "*" }
+      | "$"                           { Str "$" }
+
+
+NoCommaExprListE :: {[Expr]}
+      :                                          { [] }
+      | NoCommaExprList                          { $1 }
+
+NoCommaExprList :: {[Expr]}
+      : NoCommaExprDList                         { {-ExprList-}DList.toList $1 }
+
+NoCommaExprDList :: {DList Expr}
+      : NoCommaExprDList MW NoCommaExpr          { ($1 `DList.snoc` Spaces) `DList.snoc` $3 }
+      | NoCommaExprDList NoCommaExpr             { $1 `DList.snoc` $2 }
+      | NoCommaExpr                              { DList.singleton $1 }
+
+NoCommaExpr :: {Expr}
       : OTHER                         { Str $1 }
       | DC                            { parseDCToken $1 }
       | "$" "{" OTHER "}"             { VarSimple $3 }
