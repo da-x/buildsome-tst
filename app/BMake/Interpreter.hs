@@ -15,7 +15,7 @@ import           Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS8
 import           Data.Function ((&))
 import           Data.IORef
-import           Data.List (intercalate, span)
+import           Data.List (intercalate)
 import           Data.List.Split (splitOn)
 import           Data.Map (Map)
 import qualified Data.Map as Map
@@ -133,26 +133,32 @@ parseGroups = \case
             Expr1'VarSpecial mv m:xs -> commaSplit xs & prepend (Expr2'VarSpecial mv m)
             [] -> error "Missing close brace!"
 
+data CompressDetails = WithSpace | WithoutSpace
+    deriving Eq
+
+compress :: CompressDetails -> [Expr3] -> [Expr3]
+compress _ [] = []
+compress cd xs' =
+    case span spaceOrStr xs' of
+        ([], (x:xs)) -> x:compress cd xs
+        ([x], xs)    -> x:compress cd xs
+        (ys, xs)     -> (Expr3'Str $ BS8.concat $ map toStr ys):compress cd xs
+
+  where
+    ws = cd == WithSpace
+
+    spaceOrStr Expr3'Spaces  = ws
+    spaceOrStr (Expr3'Str _) = True
+    spaceOrStr _             = False
+
+    toStr Expr3'Spaces       = " "
+    toStr (Expr3'Str s)      = s
+    toStr _                  = ""
 
 cartesian :: [Expr2] -> [Expr3]
-cartesian input = compress afterExpand
+cartesian input = afterExpand
 --    (\output -> trace ("cartesian input: " ++ show input ++ "\n   output: " ++ show output) output) .
     where
-        compress [] = []
-        compress xs' =
-            case span spaceOrStr xs' of
-                ([], (x:xs)) -> x:compress xs
-                ([x], xs)    -> x:compress xs
-                (ys, xs)     -> (Expr3'Str $ BS8.concat $ map toStr ys):compress xs
-
-        spaceOrStr Expr3'Spaces  = True
-        spaceOrStr (Expr3'Str _) = True
-        spaceOrStr _             = False
-
-        toStr Expr3'Spaces       = " "
-        toStr (Expr3'Str s)      = s
-        toStr _                  = ""
-
         afterExpand = unwords2 . map unwords2 . map go . splitOn [Expr2'Spaces] $ input
         unwords2 = intercalate [Expr3'Spaces]
         go :: [Expr2] -> [[Expr3]]
@@ -215,15 +221,17 @@ target outputs inputs {-orderOnly-} script =
     do
         vars <- Reader.asks envVars >>= liftIO . readIORef
         let norm = normalize vars
-        outs  <- liftIO $ evaluate $ force $ norm outputs
-        ins   <- liftIO $ evaluate $ force $ norm inputs
-        scrps <- liftIO $ evaluate $ force $ map norm script
+        outs  <- liftIO $ evaluate $ force $ compress WithoutSpace $ norm outputs
+        ins   <- liftIO $ evaluate $ force $ compress WithoutSpace $ norm inputs
+        scrps <- liftIO $ evaluate $ force $ map (compress WithSpace . norm) script
 
         let put = liftIO . putStrLn
         put "target:"
         put $ "     outs: " ++ showExprL outs
         put $ "     ins:  " ++ showExprL ins
         put $ "     script:"
+        put $ show ins
+        put $ show outs
         put $ show scrps
         mapM_ (put . ("        "++) . showExprL) scrps
         return ()
