@@ -98,8 +98,9 @@ main :: IO ()
 main = do
     cache <- newIORef Map.empty
 
-    let printWeakVars makefile = do
+    let reportResult makefile = do
             print $ MT.makefileWeakVars makefile
+            print $ length $ MT.makefilePhonies makefile
             return ()
 
     let newCode makefilePath = do
@@ -111,7 +112,7 @@ main = do
                 -- let astf = T.decodeUtf8 . B.concat . BL.toChunks <$> ast
                 -- B.putStr $ YAML.encodePretty YAML.defConfig astf
             makefile <- printTimeIt "total" $ interpret ast Map.empty
-            printWeakVars makefile
+            reportResult makefile
             return ()
 
     let oldCode makefilePath = do
@@ -119,7 +120,7 @@ main = do
 
             printTimeIt "total" $ do
                 makefile <- OLD.parse (B8.pack makefilePath) Map.empty
-                printWeakVars makefile
+                reportResult makefile
                 return ()
 
     getArgs >>= \case

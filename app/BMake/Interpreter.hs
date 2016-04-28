@@ -12,6 +12,7 @@ import           BMake.Base
 import           BMake.Data
 import           Control.DeepSeq (NFData(..), force)
 import           Control.Exception (evaluate)
+import           Control.Monad (when, forM_)
 import           Control.Monad.IO.Class (MonadIO(..))
 import           Control.Monad.Trans.Reader (ReaderT(..))
 import qualified Control.Monad.Trans.Reader as Reader
@@ -286,7 +287,7 @@ target outputs inputs {-orderOnly-} script =
     do
         vars <- Reader.asks envVars >>= liftIO . readIORef
         let norm = normalize vars
-        let orderOnlyInputs = [] -- ToDo
+        let orderOnlyInputs = [] :: [BS8.ByteString] -- ToDo
         outs  <- liftIO $ evaluate $ force $ compress WithoutSpace $ norm outputs
         ins   <- liftIO $ evaluate $ force $ compress WithoutSpace $ norm inputs
         scrps <- liftIO $ evaluate $ force $ map (compress WithSpace . norm) script
@@ -303,7 +304,7 @@ target outputs inputs {-orderOnly-} script =
                 put $ show scrps
                 mapM_ (put . ("        "++) . showExprL) scrps
 
-        _dump
+        -- _dump
 
         Env{..} <- Reader.ask
         let inputPaths = toFileNames ins
@@ -330,14 +331,24 @@ target outputs inputs {-orderOnly-} script =
                 return ()
             False -> do
                 -- ToDo: add to phonies if need be
-                let modf xs = MT.Target
-                      { targetOutputs = outputPaths
-                      , targetInputs = inputPaths
-                      , targetOrderOnlyInputs = [] -- ToDo
-                      , targetCmds = Right scrps
-                      , targetPos = pos
-                      } : xs
-                liftIO $ modifyIORef' envTargets modf
+                case outputPaths of
+                    [".PHONY"] -> do
+                        when (orderOnlyInputs /= []) $ do
+                            error "Unexpected order only inputs for phony target" -- ToDo: improve EH
+                        when (scrps /= []) $ do
+                            error "Phony target may not specify commands" -- ToDo: improve EH
+                        forM_ inputPaths $ \path -> do
+                            liftIO $ modifyIORef' envPhonies ((:) (pos, path))
+                        return ()
+                    _ -> do
+                        let modf xs = MT.Target
+                              { targetOutputs = outputPaths
+                              , targetInputs = inputPaths
+                              , targetOrderOnlyInputs = [] -- ToDo
+                              , targetCmds = Right scrps
+                              , targetPos = pos
+                              } : xs
+                        liftIO $ modifyIORef' envTargets modf
 
 -- Expanded exprs given!
 -- TODO: Consider type-level marking of "expanded" exprs
