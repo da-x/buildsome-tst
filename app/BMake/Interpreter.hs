@@ -287,7 +287,7 @@ target outputs inputs {-orderOnly-} script =
     do
         vars <- Reader.asks envVars >>= liftIO . readIORef
         let norm = normalize vars
-        let orderOnlyInputs = [] :: [BS8.ByteString] -- ToDo
+        let orderOnlyInputs = [] -- ToDo
         outs  <- liftIO $ evaluate $ force $ compress WithoutSpace $ norm outputs
         ins   <- liftIO $ evaluate $ force $ compress WithoutSpace $ norm inputs
         scrps <- liftIO $ evaluate $ force $ map (compress WithSpace . norm) script
@@ -309,6 +309,7 @@ target outputs inputs {-orderOnly-} script =
         Env{..} <- Reader.ask
         let inputPaths = toFileNames ins
         let outputPaths = toFileNames outs
+        let orderOnlyInputsPaths = toFileNames orderOnlyInputs
         let pos = ParsecPos.newPos "" 0 0 -- ToDo
 
         case hasPatterns outs of
@@ -319,7 +320,7 @@ target outputs inputs {-orderOnly-} script =
                 let tryMakePattern path =
                           maybe (MT.InputPath path) MT.InputPattern $ mkFilePattern path
                 let inputPats = map tryMakePattern inputPaths
-                let orderOnlyInputPats = map tryMakePattern orderOnlyInputs
+                let orderOnlyInputPats = map tryMakePattern orderOnlyInputsPaths
                 let modf xs = MT.Target
                       { targetOutputs = map mkOutputPattern outputPaths
                       , targetInputs = inputPats
@@ -332,7 +333,7 @@ target outputs inputs {-orderOnly-} script =
             False -> do
                 case outputPaths of
                     [".PHONY"] -> do
-                        when (orderOnlyInputs /= []) $ do
+                        when (orderOnlyInputsPaths /= []) $ do
                             error "Unexpected order only inputs for phony target" -- ToDo: improve EH
                         when (scrps /= []) $ do
                             error "Phony target may not specify commands" -- ToDo: improve EH
@@ -343,7 +344,7 @@ target outputs inputs {-orderOnly-} script =
                         let modf xs = MT.Target
                               { targetOutputs = outputPaths
                               , targetInputs = inputPaths
-                              , targetOrderOnlyInputs = [] -- ToDo
+                              , targetOrderOnlyInputs = orderOnlyInputsPaths
                               , targetCmds = Right scrps
                               , targetPos = pos
                               } : xs
