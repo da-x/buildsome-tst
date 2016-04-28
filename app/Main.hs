@@ -100,7 +100,7 @@ main = do
 
     let reportResult makefile = do
             putStrLn $ "deepseqing"
-            printTimeIt "deepsek" $
+            printTimeIt "deepseq" $
                 putStrLn $ deepseq makefile "done"
             print $ length $ MT.makefileTargets makefile
             print $ length $ MT.makefilePatterns makefile
