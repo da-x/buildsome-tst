@@ -204,13 +204,26 @@ normalize vars = cartesian . parseGroups . subst vars
 assign :: ByteString -> AssignType -> [Expr] -> M ()
 assign name assignType exprL =
     do
-        varsRef <- Reader.asks envVars
-        let f AssignConditional (Just old) = Just old
-            f _ _ = Just exprL
-        -- ToDo: add to weakvars
-        Map.alter (f assignType) name
-            & modifyIORef' varsRef
-            & liftIO
+        Env{..} <- Reader.ask
+        vars <- liftIO $ readIORef envVars
+
+        let set = Map.insert name exprL
+               & modifyIORef' envVars
+               & liftIO
+
+        case (assignType, Map.lookup name vars) of
+            (AssignConditional, (Just _)) ->
+                return ()
+            (AssignConditional, Nothing) -> do
+                let exprLNorm = compress WithSpace $ normalize vars exprL
+                let val = case exprLNorm of
+                              (Expr3'Str text:_) ->
+                                  BS8.concat $ BSL8.toChunks text
+                              _ -> ""
+                let modf = Map.insert (BS8.concat $ BSL8.toChunks name) val
+                liftIO $ modifyIORef' envWeakVars modf
+                set
+            _ -> set
 
 local :: [Statement] -> M ()
 local stmts =

@@ -26,6 +26,7 @@ import           BMake.Base                 (Makefile, MakefileF (..),
 import           BMake.Interpreter          (interpret)
 import           BMake.User                 (Error (..), parseMakefile,
                                              parseWithAlex, stateBase)
+import qualified Lib.Makefile.Types as MT
 import qualified Lib.Makefile.Parser        as OLD
 import           Lib.TimeIt                 (printTimeIt)
 ------------------------------------------------------------------------------------------
@@ -97,20 +98,28 @@ main :: IO ()
 main = do
     cache <- newIORef Map.empty
 
+    let printWeakVars makefile = do
+            print $ MT.makefileWeakVars makefile
+            return ()
+
     let newCode makefilePath = do
             putStrLn "New Makefile parser:"
+
             ast <-
                 printTimeIt "total" $
                 newParse cache (FilePath.takeDirectory makefilePath) makefilePath
                 -- let astf = T.decodeUtf8 . B.concat . BL.toChunks <$> ast
                 -- B.putStr $ YAML.encodePretty YAML.defConfig astf
-            _ <- printTimeIt "total" $ interpret ast Map.empty
+            makefile <- printTimeIt "total" $ interpret ast Map.empty
+            printWeakVars makefile
             return ()
 
     let oldCode makefilePath = do
             putStrLn "Running old Makefile parser:"
+
             printTimeIt "total" $ do
-                _ <- OLD.parse (B8.pack makefilePath) Map.empty
+                makefile <- OLD.parse (B8.pack makefilePath) Map.empty
+                printWeakVars makefile
                 return ()
 
     getArgs >>= \case
