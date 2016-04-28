@@ -119,7 +119,7 @@ main = do
             newCode makefilePath
 
         ["old", makefilePath] -> do
-            newCode makefilePath
+            oldCode makefilePath
 
         [makefilePath] -> do
             oldCode makefilePath
