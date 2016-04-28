@@ -330,7 +330,6 @@ target outputs inputs {-orderOnly-} script =
                 liftIO $ modifyIORef' envPatterns modf
                 return ()
             False -> do
-                -- ToDo: add to phonies if need be
                 case outputPaths of
                     [".PHONY"] -> do
                         when (orderOnlyInputs /= []) $ do
