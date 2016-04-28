@@ -6,6 +6,7 @@
 
 module BMake.Interpreter
     ( interpret
+    , interpolateCmds
     ) where
 
 import           BMake.Base
@@ -21,11 +22,11 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy.Char8 as BSL8
 import           Data.Function ((&))
 import           Data.IORef
-import           Data.List (intercalate)
+import           Data.List (intercalate, intersperse)
 import           Data.List.Split (splitOn)
 import           Data.Map (Map)
 import qualified Data.Map as Map
-import           Data.Maybe (fromMaybe)
+import           Data.Maybe (fromMaybe, listToMaybe)
 import           GHC.Generics (Generic)
 import qualified Text.Parsec.Pos as ParsecPos
 
@@ -282,6 +283,34 @@ toFileNames ((Expr3'Str text):xs) = (BS8.concat . BSL8.toChunks) text : toFileNa
 toFileNames (_:xs)                = toFileNames xs
 toFileNames []                    = []
 
+interpolateCmds :: Maybe BS8.ByteString -> MT.Target -> MT.Target
+interpolateCmds mStem tgt@(MT.Target outputPaths inputsPaths ooInputs (Right exprL) _) =
+    tgt { MT.targetCmds = cmds }
+    where
+        getFirst err paths = fromMaybe (error err) $ listToMaybe paths
+
+        cmds = Left $ BS8.concat $ concat $ concat $ intersperse [["\n"]] $ map (map perItem) exprL
+
+        perItem (Expr3'Str text) = BSL8.toChunks text
+        perItem (Expr3'Spaces) = [" "]
+        perItem (Expr3'VarSpecial FirstOutput modtype) =
+            [modfn modtype $ getFirst "No first output for @ variable" outputPaths]
+        perItem (Expr3'VarSpecial FirstInput modtype) =
+            [modfn modtype $ getFirst "No first input for @ variable" inputsPaths]
+        perItem (Expr3'VarSpecial AllInputs modtype) =
+            intersperse " " (map (modfn modtype) $ inputsPaths)
+        perItem (Expr3'VarSpecial AllOOInputs modtype) =
+            intersperse " " (map (modfn modtype) $ ooInputs)
+        perItem (Expr3'VarSpecial Stem modtype) =
+            case mStem of
+               Nothing -> []
+               Just stem -> [modfn modtype stem]
+
+        modfn NoMod   f = f
+        modfn ModFile f = FilePath.takeFileName f
+        modfn ModDir  f = FilePath.takeDirectory f
+interpolateCmds _ tgt = tgt
+
 target :: [Expr] -> [Expr] -> [[Expr]] -> M ()
 target outputs inputs {-orderOnly-} script =
     do
@@ -299,10 +328,10 @@ target outputs inputs {-orderOnly-} script =
                 put $ "     outs: " ++ showExprL outs
                 put $ "     ins:  " ++ showExprL ins
                 put $ "     script:"
+                mapM_ (put . ("        "++) . showExprL) scrps
                 put $ show ins
                 put $ show outs
                 put $ show scrps
-                mapM_ (put . ("        "++) . showExprL) scrps
 
         -- _dump
 
@@ -341,13 +370,16 @@ target outputs inputs {-orderOnly-} script =
                             liftIO $ modifyIORef' envPhonies ((:) (pos, path))
                         return ()
                     _ -> do
-                        let modf xs = MT.Target
+                        let resTarget = MT.Target
                               { targetOutputs = outputPaths
                               , targetInputs = inputPaths
                               , targetOrderOnlyInputs = orderOnlyInputsPaths
                               , targetCmds = Right scrps
                               , targetPos = pos
-                              } : xs
+                              }
+                        let interpolatedTarget =
+                                interpolateCmds Nothing resTarget
+                        let modf xs = interpolatedTarget : xs
                         liftIO $ modifyIORef' envTargets modf
 
 -- Expanded exprs given!

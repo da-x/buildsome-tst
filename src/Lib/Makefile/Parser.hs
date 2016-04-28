@@ -36,6 +36,7 @@ import qualified Text.Parsec as P
 import qualified Text.Parsec.Pos as Pos
 import qualified Text.Parsec.Prim as Prim
 
+import qualified BMake.Interpreter as BMake
 import           Prelude.Compat hiding (FilePath)
 
 #define RELEASE_INLINE(x)   {-# INLINE x #-}
@@ -400,8 +401,7 @@ targetPattern pos outputPaths inputPaths orderOnlyInputs = do
     tryMakePattern path = maybe (InputPath path) InputPattern $ mkFilePattern path
 
 interpolateCmds :: Maybe ByteString -> Target -> Target
-interpolateCmds _ (Target _ _ _ (Right _) _) =
-    error "implement for new parser"
+interpolateCmds mStem@_ tgt@(Target _ _ _ (Right _) _) = BMake.interpolateCmds mStem tgt
 interpolateCmds mStem tgt@(Target outputs inputs ooInputs (Left cmds) pos) =
   tgt
   { targetCmds = Left $ either (error . show) id $ interpolateMetavars cmds
