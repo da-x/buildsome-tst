@@ -5,7 +5,7 @@
 module Main (main) where
 
 ------------------------------------------------------------------------------------------
-import           Control.DeepSeq            (force)
+import           Control.DeepSeq            (force, deepseq)
 import           Control.Exception          (evaluate)
 import           Control.Monad              (forM_)
 import qualified Data.ByteString.Char8      as B8
@@ -99,7 +99,11 @@ main = do
     cache <- newIORef Map.empty
 
     let reportResult makefile = do
-            print $ MT.makefileWeakVars makefile
+            putStrLn $ "deepseqing"
+            printTimeIt "deepsek" $
+                putStrLn $ deepseq makefile "done"
+            print $ length $ MT.makefileTargets makefile
+            print $ length $ MT.makefilePatterns makefile
             print $ length $ MT.makefilePhonies makefile
             return ()
 
@@ -118,10 +122,9 @@ main = do
     let oldCode makefilePath = do
             putStrLn "Running old Makefile parser:"
 
-            printTimeIt "total" $ do
-                makefile <- OLD.parse (B8.pack makefilePath) Map.empty
-                reportResult makefile
-                return ()
+            makefile <- printTimeIt "total" $ do
+                OLD.parse (B8.pack makefilePath) Map.empty
+            reportResult makefile
 
     getArgs >>= \case
         [] -> putStrLn "No parameters given"
