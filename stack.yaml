@@ -1,4 +1,6 @@
 packages:
-- '.'
+- location: https://github.com/da-x/happy/archive/cd790d3ca7cc5816bb3a02227ac31699c35712c0.zip
+  extra-dep: true
+- .
 resolver: lts-5.4
 rebuild-ghc-options: true
