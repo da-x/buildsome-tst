@@ -22,20 +22,26 @@ executable buildsome-tst-exe
   main-is:             Main.hs
   other-modules:       BMake.User
                      , BMake.Base
-                     , BMake.Parser
-                     , BMake.Lexer
+                     , BMake.Data
                      , BMake.Interpreter
+                     , BMake.Lexer
+                     , BMake.Parser
+                     , Buildsome.BuildMaps
+                     , Buildsome.Print
                      , Lib.ByteString
-                     , Lib.StringPattern
-                     , Lib.Makefile.Types
                      , Lib.Cartesian
                      , Lib.FilePath
+                     , Lib.Makefile
                      , Lib.Makefile.CondState
+                     , Lib.Makefile.InstantiatePattern
                      , Lib.Makefile.MonadClass
                      , Lib.Makefile.Parser
+                     , Lib.Makefile.Types
+                     , Lib.Makefile.VerifyPhonies
                      , Lib.Parsec
+                     , Lib.StringPattern
                      , Lib.TimeIt
- 
+
   if flag(debug) {
     ghc-options:       -threaded -Wall -O0
   } else {
