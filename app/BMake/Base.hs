@@ -35,7 +35,6 @@ import           Control.DeepSeq.Generics (genericRnf)
 import           Data.Aeson
 import           Data.ByteString.Lazy     (ByteString)
 import           Data.String              (IsString)
-import           Data.Text
 import           GHC.Generics
 ----
 import           BMake.Lexer
@@ -128,50 +127,6 @@ data MakefileF text = Makefile
 type Makefile = MakefileF ByteString
 
 instance NFData text => NFData (MakefileF text) where
-
-instance ToJSON (ExprF Text) where
-    toJSON (Str name) = String name
-    toJSON Comma = String ","
-    toJSON OpenBrace = String "{"
-    toJSON CloseBrace = String "}"
-    toJSON (Spaces) = String " "
-    toJSON (VarSpecial vtype mods) =
-        object [ "varSpecial" .= vtype
-               , "varMod" .= mods ]
-    toJSON (VarSimple name) =
-        object [ "var" .= String name ]
-
-instance ToJSON (StatementF Text) where
-    toJSON (Assign name isOptional expr) =
-        object [ "assign" .= object [
-            "name" .= name
-          , "isOptional" .= isOptional
-          , "expr" .= expr
-          ] ]
-    toJSON (Local stmts) =
-        object [
-            "local" .= stmts
-          ]
-    toJSON (Target outps inps exprs) =
-        object [ "target" .= object [
-            "outputs" .= outps
-          , "inputs" .= inps
-          , "recipe" .= exprs
-          ] ]
-    toJSON (Include name) =
-        object [
-            "include" .= name
-          ]
-    toJSON (IfCmp b val_a val_b if_pass if_otherwise) =
-        object [ "compare" .= object [
-            "is_equal" .= b
-          , "val_a" .= val_a
-          , "val_b" .= val_b
-          , "if_pass" .= if_pass
-          , "if_otherwise" .= if_otherwise
-          ] ]
-
-instance ToJSON (MakefileF Text) where
 
 getPrevTokens :: Alex (Maybe Token, Maybe Token)
 getPrevTokens = prevTokens <$> getUserState

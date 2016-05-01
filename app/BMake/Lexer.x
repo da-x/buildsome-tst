@@ -71,6 +71,7 @@ state:-
   <0>      [ \n ]+ [ \t ]          { tok         TokenNewLineAndTab    }
   <0>      \\ \n                   ;
   <0>      \\ \#                   { tokStr      TokenOther            }
+  <0>      \\ \"                   { tokConstStr TokenOther "\""       }
   <0>      \\ .                    { tokStr      TokenOther            }
   <0>      \n                      { tok         TokenNewLine          }
   <0>      \# .*                   ;
@@ -93,6 +94,7 @@ tok' r f (p, _, input, _) len = do
 tok x = tok' Nothing (\s -> x)
 mkStr = BS.pack . B.unpack
 tokStr x = tok' Nothing (\s -> x s)
+tokConstStr x c = tok' Nothing (\_ -> x c)
 
 tokDC varP modP =
     tok' Nothing (\s -> TokenDollarChar ((B.index s varP), (fmap (\x -> B.index s x) modP)))

@@ -7,9 +7,6 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Map as Map
 import qualified Data.DList as DList
 import           Data.DList (DList)
-import           Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Lazy (ByteString)
 
