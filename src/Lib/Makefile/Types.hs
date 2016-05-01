@@ -4,7 +4,7 @@ module Lib.Makefile.Types
   ( TargetType(..), targetAllInputs
   , FilePattern(..), onFilePatternPaths
   , InputPat(..), onInputPatPaths
-  , Target, onTargetPaths
+  , Target, onTargetPaths, targetInterpolatedCmds
   , Pattern, onPatternPaths
   , VarName, VarValue, Vars
   , Makefile(..), onMakefilePaths
@@ -70,6 +70,12 @@ instance NFData Makefile where rnf = genericRnf
 targetAllInputs :: Target -> [FilePath]
 targetAllInputs target =
   targetInputs target ++ targetOrderOnlyInputs target
+
+targetInterpolatedCmds :: Target -> ByteString
+targetInterpolatedCmds target =
+    case targetCmds target of
+        Left x -> x
+        Right _ -> error "target was not interpolated"
 
 -- Filepath lens boilerplate:
 
