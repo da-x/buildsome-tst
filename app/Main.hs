@@ -10,6 +10,7 @@ import qualified Data.ByteString.Char8 as B8
 import qualified Data.Map              as Map
 import           System.Environment    (getArgs)
 ----
+import qualified BMake.User            as BMake
 import qualified Lib.Makefile.Parser   as OLD
 import qualified Lib.Makefile.Types    as MT
 import           Lib.TimeIt            (printTimeIt)
@@ -29,7 +30,7 @@ main = do
     let newCode makefilePath = do
             putStrLn "New Makefile parser:"
             makefile <- printTimeIt "total" $ do
-                OLD.parse (B8.pack makefilePath) Map.empty
+                BMake.parse (B8.pack makefilePath) Map.empty
             reportResult makefile
             return ()
 
