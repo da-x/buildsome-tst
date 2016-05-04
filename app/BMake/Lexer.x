@@ -73,7 +73,8 @@ state:-
   <0>      \$ \( [\@ \^ \< \* \|] (D|F) \)
                                    { tokDC       2 (Just 3)            }
   <0>      \$                      { tok         TokenDollar           }
-  <0>      [ \n ]+ [ \t ]          { tok         TokenNewLineAndTab    }
+  <0>      [ \n ]+ ([\ ]*[\#][^ \n]*[\n])* [ \t ]
+				   { tok     TokenNewLineAndTab        }
   <0>      \\ \n                   ;
   <0>      \\ \#                   { tokStr      TokenOther            }
   <0>      \\ \"                   { tokConstStr TokenOther "\""       }
@@ -187,9 +188,7 @@ alexEOF = do
   (p, _, _, _) <- alexGetInput
   return $ Token p TokenEOF
 
-data AlexUserState = AlexUserState
-    { prevTokens :: (Maybe Token, Maybe Token)
-    , filePath   :: FilePath.FilePath
-    }
-alexInitUserState = AlexUserState (Nothing, Nothing) ""
+newtype AlexUserState = AlexUserState
+    { filePath   :: FilePath.FilePath }
+alexInitUserState = AlexUserState ""
 }
